@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+venv/
+env/
+
+# Environment / secrets
+.env
+*.env
+
+# Generated output
+output/
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
