@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import ChatPanel from "./components/ChatPanel";
 import WebtoonViewer from "./components/WebtoonViewer";
 
@@ -10,12 +10,14 @@ export type Panel = {
   dialogue: string[];
   narration: string;
   image_prompt: string;
-  // Rich storyboard fields — stored for edit context
   scene_description?: string;
-  character_info?: string;
-  character_state?: string;
+  face_description?: string;
+  character_name?: string;
+  outfit?: string;
+  character_expression?: string;
   camera_angle?: string;
   mood?: string;
+  session_id?: string;
   loading?: boolean;
   status?: "done" | "gen" | "wait";
 };
@@ -30,10 +32,17 @@ export type Style = {
 };
 
 export const STYLES: Style[] = [
-  { id: "k-webtoon", emoji: "🇰🇷", title: "K-Webtoon", desc: "Korean webtoon style" },
-  { id: "manga", emoji: "🇯🇵", title: "Manga", desc: "Japanese manga style" },
-  { id: "comic", emoji: "🇺🇸", title: "Comic", desc: "American comic style" },
-  { id: "cinematic", emoji: "🎬", title: "Cinematic", desc: "Film-like direction" },
+  { id: "k-webtoon", emoji: "\uD83C\uDDF0\uD83C\uDDF7", title: "K-Webtoon", desc: "Korean webtoon style" },
+  { id: "anime", emoji: "\uD83C\uDDEF\uD83C\uDDF5", title: "Anime", desc: "Japanese anime style" },
+  { id: "comic", emoji: "\uD83C\uDDFA\uD83C\uDDF8", title: "Comic", desc: "American comic style" },
+  { id: "cinematic", emoji: "\uD83C\uDFAC", title: "Cinematic", desc: "Cinematic manhwa style" },
+];
+
+const STORY_SUGGESTIONS = [
+  "I'm a broke developer who wins the Gemini hackathon. Google flies me business class to Mountain View. I give a keynote at Google I/O.",
+  "I become an idol trainee at HYBE. I debut in a K-pop group and perform at Coachella.",
+  "I get isekai'd into a fantasy world where I'm the chosen hero with overpowered magic.",
+  "I travel back to Joseon dynasty Korea and accidentally become a royal advisor to the king.",
 ];
 
 export default function Home() {
@@ -42,38 +51,48 @@ export default function Home() {
   const [panels, setPanels] = useState<Panel[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [characterDescription, setCharacterDescription] = useState("");
-  const [selectedPanel, setSelectedPanel] = useState<number | null>(null);
+  const [characterImage, setCharacterImage] = useState("");
+  const [selectedPanels, setSelectedPanels] = useState<number[]>([]);
   const [genProgress, setGenProgress] = useState({ current: 0, total: 0 });
   const [storyTitle, setStoryTitle] = useState("");
+  const [sessionId, setSessionId] = useState("");
+
+  // Story input state (lifted here so it persists across phases)
+  const [story, setStory] = useState("");
+  const [selfieFile, setSelfieFile] = useState<File | null>(null);
+  const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Refs to avoid stale closures in handleEdit
+  const panelsRef = useRef<Panel[]>([]);
+  const sessionIdRef = useRef("");
+  useEffect(() => { panelsRef.current = panels; }, [panels]);
+  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
 
   const handleSelectStyle = (style: Style) => {
     setSelectedStyle(style);
     setPhase(1);
   };
 
-  const handleGenerate = async (story: string, selfieFile?: File, addMsg?: (text: string) => void) => {
+  // addMsg callback ref — ChatPanel registers its addMsg function here
+  const addMsgRef = useRef<((text: string, type?: "sys" | "progress" | "ai") => void) | null>(null);
+
+  const handleGenerate = async () => {
+    if (!story.trim()) return;
     const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
 
     setPhase(2);
     setIsGenerating(true);
     setStoryTitle("Generating...");
-
-    // Init 22 wait placeholders immediately
-    setPanels(
-      Array.from({ length: 22 }, (_, i) => ({
-        panel_number: i + 1,
-        image_url: "",
-        dialogue: [],
-        narration: "",
-        image_prompt: "",
-        status: "wait" as const,
-      }))
-    );
-    setGenProgress({ current: 0, total: 22 });
+    setPanels([]);
+    setGenProgress({ current: 0, total: 0 });
 
     const formData = new FormData();
-    formData.append("story", story);
+    formData.append("story", story.trim());
+    if (selectedStyle) formData.append("style", selectedStyle.id);
     if (selfieFile) formData.append("selfie", selfieFile);
+
+    const addMsg = addMsgRef.current;
 
     try {
       const res = await fetch(`${BACKEND}/generate/stream`, { method: "POST", body: formData });
@@ -92,11 +111,37 @@ export default function Home() {
         for (const chunk of chunks) {
           if (!chunk.startsWith("data: ")) continue;
           const event = JSON.parse(chunk.slice(6));
-          if (event.type === "storyboard") {
+          if (event.type === "status") {
+            addMsg?.(event.message, "sys");
+          } else if (event.type === "thought") {
+            addMsg?.(`💭 ${event.content}`, "progress");
+          } else if (event.type === "text") {
+            if (event.content?.trim()) addMsg?.(event.content.trim(), "ai");
+          } else if (event.type === "tool_call") {
+            addMsg?.(`⚙ ${event.name}()`, "progress");
+          } else if (event.type === "tool_result") {
+            addMsg?.(`✓ ${event.name} → ${event.status}`, "progress");
+          } else if (event.type === "character") {
+            setCharacterDescription(event.face_description ?? "");
+            setCharacterImage(event.face_ref_image ?? "");
+            addMsg?.("Character extracted from selfie", "progress");
+          } else if (event.type === "storyboard") {
             setStoryTitle(event.title ?? "");
-            setCharacterDescription(event.character_description ?? "");
-            setGenProgress({ current: 0, total: event.panel_count });
-            addMsg?.(`✅ Storyboard: "${event.title}" · ${event.panel_count} panels queued`);
+            setSessionId(event.session_id ?? "");
+            if (!characterDescription && event.character_description) {
+              setCharacterDescription(event.character_description);
+            }
+            const count = event.panel_count as number;
+            setPanels(Array.from({ length: count }, (_, i) => ({
+              panel_number: i + 1,
+              image_url: "",
+              dialogue: [],
+              narration: "",
+              image_prompt: "",
+              status: "wait" as const,
+            })));
+            setGenProgress({ current: 0, total: count });
+            addMsg?.(`\u2726 "${event.title}" \u00B7 ${count} panels`, "progress");
           } else if (event.type === "panel") {
             const p = event.panel as Panel;
             setPanels((prev) =>
@@ -105,8 +150,12 @@ export default function Home() {
               )
             );
             setGenProgress((prev) => ({ ...prev, current: prev.current + 1 }));
-            addMsg?.(`🖼 Panel #${p.panel_number} · ${p.narration || "done"}`);
+            addMsg?.(`Panel ${p.panel_number} \u00B7 ${p.narration || "done"}`, "progress");
+          } else if (event.type === "error") {
+            addMsg?.(event.message ?? "Generation failed", "sys");
+            setIsGenerating(false);
           } else if (event.type === "done") {
+            setSessionId(event.session_id ?? sessionId);
             setIsGenerating(false);
           }
         }
@@ -126,24 +175,36 @@ export default function Home() {
     );
 
     try {
-      const panel = panels.find((p) => p.panel_number === panelNumber);
-      const res = await fetch("/api/edit", {
+      const panel = panelsRef.current.find((p) => p.panel_number === panelNumber);
+      const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+      const res = await fetch(`${BACKEND}/edit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           panel_number: panelNumber,
           instruction,
+          session_id: panel?.session_id ?? sessionIdRef.current,
           scene_description: panel?.scene_description ?? "",
-          character_info: panel?.character_info ?? characterDescription,
-          character_state: panel?.character_state ?? "",
+          face_description: panel?.face_description ?? characterDescription,
+          outfit: panel?.outfit ?? "",
+          character_expression: panel?.character_expression ?? "",
+          camera_angle: panel?.camera_angle ?? "",
+          mood: panel?.mood ?? "",
+          dialogue: panel?.dialogue?.[0] ?? "",
+          style: selectedStyle?.id ?? "k-webtoon",
         }),
       });
       const data = await res.json();
 
+      let newUrl = data.image_url || "";
+      if (newUrl && !newUrl.startsWith("data:")) {
+        newUrl += (newUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`;
+      }
+
       setPanels((prev) =>
         prev.map((p) =>
           p.panel_number === panelNumber
-            ? { ...p, image_url: data.image_url, loading: false, status: "done" as const }
+            ? { ...p, image_url: newUrl, loading: false, status: "done" as const }
             : p
         )
       );
@@ -162,9 +223,21 @@ export default function Home() {
     setPanels([]);
     setIsGenerating(false);
     setCharacterDescription("");
-    setSelectedPanel(null);
+    setCharacterImage("");
+    setSelectedPanels([]);
     setGenProgress({ current: 0, total: 0 });
     setStoryTitle("");
+    setSessionId("");
+    setStory("");
+    setSelfieFile(null);
+    setSelfiePreview(null);
+  };
+
+  const handleSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelfieFile(file);
+    setSelfiePreview(URL.createObjectURL(file));
   };
 
   const donePanels = panels.filter((p) => p.status === "done").length;
@@ -173,60 +246,184 @@ export default function Home() {
     <main style={{ height: "100vh", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
       {/* Top Bar */}
       <div className="topbar">
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <span className="topbar-logo">
+        <div style={{ display: "flex", alignItems: "baseline" }}>
+          <span className="topbar-logo" style={{ cursor: "pointer" }} onClick={handleReset}>
             Mangstoon<span>AI</span>
           </span>
-          <span className="topbar-model">Gemini 3.1 Pro + Flash · ADK</span>
+          {phase === 0 && (
+            <span className="topbar-sub">AI Webtoon Generator</span>
+          )}
         </div>
         <div className="topbar-right">
           {selectedStyle && (
             <span className="badge badge-style">{selectedStyle.title}</span>
           )}
-          {panels.length > 0 && (
+          {panels.length > 0 && genProgress.total > 0 && (
             <span className="badge badge-progress">
-              {donePanels}/{panels.length}
+              {donePanels}/{genProgress.total}
             </span>
           )}
-          <button className="btn-reset" onClick={handleReset}>RESET</button>
+          {phase > 0 && (
+            <button className="btn-reset" onClick={handleReset}>Reset</button>
+          )}
         </div>
       </div>
 
-      {/* Split layout */}
-      <div className="split-layout">
-        <ChatPanel
-          phase={phase}
-          selectedStyle={selectedStyle}
-          panels={panels}
-          isGenerating={isGenerating}
-          selectedPanel={selectedPanel}
-          onSelectStyle={handleSelectStyle}
-          onGenerate={handleGenerate}
-          onEdit={handleEdit}
-          onSelectPanel={setSelectedPanel}
-        />
+      {/* Phase 0: Hero Landing */}
+      {phase === 0 && (
+        <div className="hero-page fade-in">
+          <div>
+            <div className="hero-title">Mangstoon<span>AI</span></div>
+            <div className="hero-subtitle">Your fantasy, illustrated.</div>
+          </div>
+          <div className="hero-styles">
+            {STYLES.map((s) => (
+              <div
+                key={s.id}
+                className="hero-style-card"
+                onClick={() => handleSelectStyle(s)}
+              >
+                <span className="hero-style-flag">{s.emoji}</span>
+                <span className="hero-style-title">{s.title}</span>
+                <span className="hero-style-desc">{s.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-        <div className="preview-panel">
-          {phase < 2 ? (
-            <div className="empty-state">
-              <span className="empty-state-icon">🌀</span>
-              <span className="empty-state-text">
-                {phase === 0 ? "스타일 선택 →" : "스토리 입력 후 생성 →"}
-              </span>
+      {/* Phase 1: Story Input */}
+      {phase === 1 && (
+        <div className="story-page fade-in">
+          <div className="story-container">
+            <button className="story-back" onClick={() => { setPhase(0); setSelectedStyle(null); }}>
+              &larr; Back to styles
+            </button>
+
+            <div className="story-heading">
+              What&apos;s your <span>fantasy</span>?
             </div>
-          ) : (
+
+            <textarea
+              className="story-textarea"
+              rows={4}
+              placeholder={"Enter your fantasy story...\ne.g. I win the hackathon, fly business class to Google I/O, meet Sundar Pichai"}
+              value={story}
+              onChange={(e) => setStory(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  handleGenerate();
+                }
+              }}
+              autoFocus
+            />
+
+            {/* Story suggestions */}
+            <div className="story-suggestions">
+              {STORY_SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  className="story-chip"
+                  onClick={() => setStory(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            {/* Selfie upload */}
+            <div className="selfie-upload">
+              <button
+                className={`selfie-btn ${selfiePreview ? "has-image" : ""}`}
+                onClick={() => fileRef.current?.click()}
+              >
+                {selfiePreview ? (
+                  <img
+                    src={selfiePreview}
+                    alt="selfie"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <span>{"\uD83D\uDCF8"}</span>
+                )}
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={handleSelfie}
+              />
+              <div>
+                <div
+                  style={{
+                    fontFamily: "var(--font-body)",
+                    fontSize: "14px",
+                    color: selfieFile ? "var(--green)" : "rgba(17, 17, 17, 0.5)",
+                    letterSpacing: "0.01em",
+                  }}
+                >
+                  {selfieFile ? "Character photo set \u2713" : "Upload your photo (optional \u2014 makes you the main character)"}
+                </div>
+                {selfieFile && (
+                  <button
+                    onClick={() => { setSelfieFile(null); setSelfiePreview(null); }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--dim)",
+                      fontSize: "10px",
+                      cursor: "pointer",
+                      padding: 0,
+                      fontFamily: "var(--font-mono)",
+                    }}
+                  >
+                    {"\u2715"} Remove
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Generate button */}
+            <button
+              className="btn-cta btn-cta-primary"
+              disabled={!story.trim()}
+              onClick={handleGenerate}
+            >
+              Generate Webtoon
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 2+: Split Layout */}
+      {phase === 2 && (
+        <div className="split-layout fade-in">
+          <ChatPanel
+            panels={panels}
+            isGenerating={isGenerating}
+            selectedPanels={selectedPanels}
+            userStory={story}
+            onEdit={handleEdit}
+            onSelectPanels={setSelectedPanels}
+            addMsgRef={addMsgRef}
+          />
+
+          <div className="preview-panel">
             <WebtoonViewer
               panels={panels}
               isGenerating={isGenerating}
-              selectedPanel={selectedPanel}
-              onSelectPanel={setSelectedPanel}
+              selectedPanels={selectedPanels}
+              onSelectPanels={setSelectedPanels}
               genProgress={genProgress}
               styleName={selectedStyle?.title ?? ""}
               storyTitle={storyTitle}
+              characterImage={characterImage}
             />
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </main>
   );
 }

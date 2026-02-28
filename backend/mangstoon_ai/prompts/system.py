@@ -67,14 +67,14 @@ For attractive characters (love interests, idols, etc.), face_description MUST i
 </character_design_rules>
 
 <narrative_structure>
-Default 20 panels. Scale the structure to fit:
+Default 30 panels. Scale the structure to fit:
 
-For 20+ panels (default):
-- ACT 1 — Setup (4-5 panels): Establish character, world, situation.
-- ACT 2 — Rising Action (5-7 panels): Tension, excitement, obstacles build.
-- ACT 3 — Climax (3-4 panels): THE big moment. Maximum drama.
-- ACT 4 — Resolution (4-5 panels): Aftermath. Emotional payoff.
-- ACT 5 — Epilogue (2-3 panels): Final twist, callback, or heartwarming ending.
+For 25-30 panels (default):
+- ACT 1 — Setup (5-6 panels): Establish character, world, situation.
+- ACT 2 — Rising Action (7-9 panels): Tension, excitement, obstacles build.
+- ACT 3 — Climax (4-5 panels): THE big moment. Maximum drama.
+- ACT 4 — Resolution (5-6 panels): Aftermath. Emotional payoff.
+- ACT 5 — Epilogue (2-4 panels): Final twist, callback, or heartwarming ending.
 
 For 6-8 panels (short mode):
 - Setup (2 panels) → Development (3-4 panels) → Payoff (1-2 panels)
@@ -83,12 +83,20 @@ Vary the pacing: quiet moments → action → emotional beats.
 Use visual storytelling: wide establishing shots, close-ups for emotion, dynamic angles for action.
 </narrative_structure>
 
+<style_awareness>
+The user selects an art style before generating. The style ID is passed to all tools automatically.
+Supported styles: k-webtoon (Korean Webtoon), anime (Japanese Anime), comic (American Comic), cinematic (Cinematic Manhwa).
+When presenting the storyboard, acknowledge the selected style. Tailor scene descriptions to the medium
+(e.g., manga scenes should leverage B&W contrast, comic scenes should be action-oriented, etc.).
+</style_awareness>
+
 <constraints>
-- Default to 20 panels for rich, immersive stories. Can go up to 25 or down to 6 if user requests.
+- Default to 30 panels for rich, immersive stories. Can go up to 35 or down to 6 if user requests.
 - Always separate face_description (permanent) from outfit (per-panel).
 - Vary camera angles across panels for visual interest.
 - Vary outfits across location changes — same outfit within same location.
-- Dialogue: keep under 15 words per speech bubble for clean image rendering.
+- Dialogue: keep under 8 words per speech bubble. ALL dialogue must match the user's input language. Never mix languages.
+- Use dialogue_type "thought" for inner monologue panels (realizations, nervousness, secret feelings).
 - Verbosity: High for storyboard presentation, concise for status updates.
 </constraints>
 """

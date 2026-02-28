@@ -7,6 +7,9 @@ from typing import Optional
 from google import genai
 from google.genai import types
 
+from ..gcs import upload_panel
+from ..styles import get_style_prompt, get_style_config
+
 OUTPUT_BASE = Path(__file__).parent.parent.parent / "output"
 OUTPUT_BASE.mkdir(parents=True, exist_ok=True)
 
@@ -20,42 +23,37 @@ def _get_session_dir(session_id: str | None = None) -> Path:
     return session_dir
 
 
-# ── Proven webtoon style prompt — tested edge-to-edge, no white bars ──
-WEBTOON_STYLE = (
-    "Korean webtoon style illustration. Clean digital line art with smooth cel-shading. "
-    "Soft gradient coloring with vibrant accents. Large expressive eyes with detailed highlights. "
-    "Modern manhwa aesthetic. Single panel illustration. "
-    "The illustration must fill the ENTIRE frame edge-to-edge. No white borders or margins."
-)
-
-
-PROMPT_OPTIMIZER = """You are a Korean webtoon image prompt specialist.
+PROMPT_OPTIMIZER = """You are an expert sequential art image prompt specialist.
 Given panel metadata, craft ONE optimized image generation prompt.
 
 RULES — follow these EXACTLY:
 1. Write the prompt as a NARRATIVE PARAGRAPH describing the scene — NOT a keyword list.
 2. Start with the style directive (provided below).
-3. Include the character's FACE description for consistency (provided below — copy it exactly).
-4. Include the OUTFIT for this specific scene (different from face — provided below).
+3. Include ALL characters' FACE descriptions for consistency (provided below — copy exactly).
+   If multiple characters are listed, include BOTH in the scene with their distinct appearances.
+4. Include the OUTFIT for each character in this specific scene (different from face — provided below).
 5. The scene_description already contains the location/background details. Reproduce them
    faithfully — the background must look consistent across panels in the same setting.
 6. Include camera angle, lighting, and mood naturally in the narrative.
 7. If there is dialogue, add speech bubble instruction:
-   - speech: 'Include a white speech bubble with rounded edges and black outline near the character containing the Korean text: "[text]"'
-   - thought: 'Include a cloud-shaped thought bubble near the character containing: "[text]"'
-   - narration: 'Include a rectangular narration box at the bottom with dark semi-transparent background and white text: "[text]"'
-8. Keep speech bubble text under 15 words.
+   - speech: 'Include a LARGE white speech bubble with rounded edges and bold black outline near the character, with LARGE BOLD readable text in English: "[text]"'
+   - thought: 'Include a LARGE cloud-shaped thought bubble near the character with LARGE BOLD readable text: "[text]"'
+   - narration: 'Include a wide rectangular narration box at the bottom with dark semi-transparent background and LARGE BOLD white text: "[text]"'
+   Make text BIG and BOLD — at least 1/8 the width of the bubble.
+8. Keep speech bubble text under 10 words for maximum readability.
 9. Do NOT include any instructions about leaving white space or margins.
+10. CRITICAL: At the END of your prompt, always append this exact line:
+    "ALL text rendered in the image must match the dialogue language provided above. Do not mix languages."
 
 STYLE DIRECTIVE (include at the start):
 {style}
 
-CHARACTER FACE (permanent — include exactly as-is):
+CHARACTER FACES (permanent — include exactly as-is for each character):
 {face_description}
 
 PANEL METADATA:
-- Outfit: {outfit}
-- Expression: {character_expression}
+- Outfits: {outfit}
+- Expressions: {character_expression}
 - Scene: {scene_description}
 - Camera: {camera_angle}
 - Mood: {mood}
@@ -76,6 +74,8 @@ def _generate_single_panel(
     dialogue: str = "",
     dialogue_type: str = "speech",
     session_dir: Path | None = None,
+    session_id: str | None = None,
+    style: str = "k-webtoon",
 ) -> dict:
     """Internal: generate one panel (prompt optimize → image gen). No tool_context."""
     if session_dir is None:
@@ -86,7 +86,7 @@ def _generate_single_panel(
     optimizer_response = client.models.generate_content(
         model="gemini-3-flash-preview",
         contents=[PROMPT_OPTIMIZER.format(
-            style=WEBTOON_STYLE,
+            style=get_style_prompt(style),
             face_description=face_description,
             outfit=outfit,
             character_expression=character_expression,
@@ -103,13 +103,14 @@ def _generate_single_panel(
     optimized_prompt = optimizer_response.text.strip()
 
     # Step 2: Generate the image
+    style_cfg = get_style_config(style)
     try:
         image_response = client.models.generate_content(
             model="gemini-3.1-flash-image-preview",
             contents=[optimized_prompt],
             config=types.GenerateContentConfig(
                 response_modalities=["TEXT", "IMAGE"],
-                image_config=types.ImageConfig(aspect_ratio="9:16"),
+                image_config=types.ImageConfig(aspect_ratio=style_cfg["aspect_ratio"], image_size="1K"),
             ),
         )
 
@@ -124,10 +125,19 @@ def _generate_single_panel(
                 with open(image_path, "wb") as f:
                     f.write(raw_bytes)
 
+                # Upload to GCS
+                gcs_url = ""
+                if session_id:
+                    try:
+                        gcs_url = upload_panel(session_id, filename, raw_bytes)
+                    except Exception:
+                        pass  # fall back to local file
+
                 return {
                     "status": "success",
                     "panel_number": panel_number,
                     "image_path": str(image_path),
+                    "image_url": gcs_url,
                     "artifact": filename,
                     "optimized_prompt": optimized_prompt[:300],
                 }
@@ -138,7 +148,7 @@ def _generate_single_panel(
         return {"status": "error", "panel_number": panel_number, "message": str(e)}
 
 
-def generate_all_panels(panels_json: str, tool_context: Optional[object] = None) -> dict:
+def generate_all_panels(panels_json: str, style: str = "k-webtoon", tool_context: Optional[object] = None) -> dict:
     """Generate ALL webtoon panels in parallel. This is the main batch generation tool.
 
     Takes the full storyboard JSON (from decompose_story) and generates all panel images
@@ -180,8 +190,19 @@ def generate_all_panels(panels_json: str, tool_context: Optional[object] = None)
     with ThreadPoolExecutor(max_workers=6) as executor:
         futures = {}
         for panel in panels:
-            char_name = panel.get("character_name", "")
-            face_desc = characters.get(char_name, "")
+            # Multi-character support
+            char_names = panel.get("character_names", [])
+            if not char_names:
+                cn = panel.get("character_name", "")
+                char_names = [cn] if cn else []
+
+            face_parts = [f"[{cn}] {characters.get(cn, '')}" for cn in char_names if characters.get(cn)]
+            face_desc = "\n".join(face_parts)
+
+            outfits_raw = panel.get("outfits", {})
+            exprs_raw = panel.get("character_expressions", {})
+            outfit = "; ".join(f"{k}: {v}" for k, v in outfits_raw.items()) if isinstance(outfits_raw, dict) and outfits_raw else panel.get("outfit", "")
+            char_expr = "; ".join(f"{k}: {v}" for k, v in exprs_raw.items()) if isinstance(exprs_raw, dict) and exprs_raw else panel.get("character_expression", "")
 
             # Prepend location description to scene_description for background consistency
             scene_desc = panel.get("scene_description", "")
@@ -194,13 +215,15 @@ def generate_all_panels(panels_json: str, tool_context: Optional[object] = None)
                 panel_number=panel["panel_number"],
                 scene_description=scene_desc,
                 face_description=face_desc,
-                outfit=panel.get("outfit", ""),
-                character_expression=panel.get("character_expression", ""),
+                outfit=outfit,
+                character_expression=char_expr,
                 camera_angle=panel.get("camera_angle", "medium shot"),
                 mood=panel.get("mood", ""),
                 dialogue=panel.get("dialogue", ""),
                 dialogue_type=panel.get("dialogue_type", "none"),
                 session_dir=session_dir,
+                session_id=session_id,
+                style=style,
             )
             futures[future] = panel["panel_number"]
 

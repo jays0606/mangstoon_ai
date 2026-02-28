@@ -25,6 +25,10 @@ Type your delusion, and watch as AI generates a full 20+ panel webtoon where **y
 | **Prompt Optimizer** | **Gemini 3 Flash** (minimal thinking) | Crafts optimized image prompts from panel metadata |
 | **Image Generation** | **Gemini 3.1 Flash Image** | Webtoon panel image generation (9:16 vertical) |
 | **Dev UI** | **ADK Web** (`adk web`) | Browser UI for testing + demo |
+| **Backend Hosting** | **Cloud Run** (Seoul) | FastAPI server, auto-deploys on push to main |
+| **Image Storage** | **GCS** (`mangstoon-panels`) | Public URLs, Seoul region CDN |
+| **CI/CD** | **GitHub Actions** + WIF | Push to main → Cloud Run deploy |
+| **Frontend Hosting** | **Vercel** | Next.js SSR + API proxy |
 | **Language** | Python 3.12+ | |
 
 ---
@@ -90,23 +94,16 @@ The hardest problem in sequential art generation. Our approach:
 3. **Outfit described separately** per scene — prevents "same clothes for 22 panels"
 4. **Multi-turn chat** with Thought Signatures for tightest consistency (sequential panels)
 
-### Locked Style Prompt
+### 4 Art Styles
 
-```
-Korean webtoon style illustration. Clean digital line art with smooth cel-shading.
-Soft gradient coloring with vibrant accents. Large expressive eyes with detailed highlights.
-Modern manhwa aesthetic. Single panel illustration.
-The illustration must fill the ENTIRE frame edge-to-edge. No white borders or margins.
-```
+Style definitions live in `backend/mangstoon_ai/styles.py` (single source of truth). The `style` parameter is threaded through all tools and API endpoints.
 
-### 4 Supported Styles
-
-| Style | Aspect Ratio | Best For |
-|-------|-------------|----------|
-| Korean Webtoon (default) | 9:16 | Romance, slice-of-life, comedy |
-| Japanese Manga | 3:4 | Action, horror, shōnen/shōjo |
-| American Comic | 2:3 | Superhero, sci-fi, noir |
-| Cinematic Manhwa | 9:16 | Fantasy, power-fantasy, thriller |
+| Style ID | Name | Aspect Ratio | Best For |
+|----------|------|-------------|----------|
+| `k-webtoon` (default) | Korean Webtoon | 9:16 | Romance, slice-of-life, comedy |
+| `anime` | Japanese Anime | 3:4 | Anime, action, shōnen/shōjo |
+| `comic` | American Comic | 2:3 | Superhero, sci-fi, noir |
+| `cinematic` | Cinematic Manhwa | 9:16 | Fantasy, power-fantasy, thriller |
 
 Full prompting reference: `.claude/skills/gemini-panel-art.md`
 
@@ -141,13 +138,27 @@ mangstoon_ai/
 pip install google-adk
 
 # Set API key
-echo "GOOGLE_API_KEY=your_key" > .env
+echo "GOOGLE_API_KEY=your_key" > backend/.env
 
-# Launch
-adk web
-# → localhost:8000, select "mangstoon_director"
-# → Chat: "나는 해커톤 1등하고 지수 만남"
+# ADK dev UI (hackathon demo)
+cd backend && uv run --project .. adk web --port 8080
+# → http://localhost:8080/dev-ui/  →  select mangstoon_ai
+
+# FastAPI backend
+cd backend && ./run.sh
+
+# Frontend
+cd frontend && npm run dev
 ```
+
+### Production
+
+```
+Backend:  https://mangstoon-backend-qlxchgmpvq-du.a.run.app
+Images:   https://storage.googleapis.com/mangstoon-panels/{session}/panel_01.png
+```
+
+CI/CD: push to `main` → GitHub Actions → Cloud Run auto-deploy.
 
 ---
 

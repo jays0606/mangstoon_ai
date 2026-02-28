@@ -95,6 +95,7 @@ source = { virtual = "backend" }
 dependencies = [
     { name = "fastapi" },
     { name = "google-adk" },
+    { name = "google-cloud-storage" },
     { name = "google-genai" },
     { name = "pillow" },
     { name = "python-dotenv" },
@@ -106,6 +107,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.134.0" },
     { name = "google-adk", specifier = ">=1.26.0" },
+    { name = "google-cloud-storage", specifier = ">=3.9.0" },
     { name = "google-genai", specifier = ">=1.65.0" },
     { name = "pillow", specifier = ">=12.1.1" },
     { name = "python-dotenv", specifier = ">=1.2.1" },

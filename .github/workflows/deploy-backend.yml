@@ -1,0 +1,41 @@
+name: Deploy Backend to Cloud Run
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy mangstoon-backend \
+            --source backend/ \
+            --region asia-northeast3 \
+            --project civil-oarlock-456708-k2 \
+            --allow-unauthenticated \
+            --memory 2Gi \
+            --cpu 2 \
+            --timeout 300s \
+            --concurrency 10 \
+            --max-instances 3 \
+            --set-secrets="GOOGLE_API_KEY=GOOGLE_API_KEY:latest" \
+            --service-account="mangstoon-deployer@civil-oarlock-456708-k2.iam.gserviceaccount.com" \
+            --build-service-account="projects/civil-oarlock-456708-k2/serviceAccounts/mangstoon-deployer@civil-oarlock-456708-k2.iam.gserviceaccount.com"

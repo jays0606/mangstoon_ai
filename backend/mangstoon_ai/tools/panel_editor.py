@@ -6,27 +6,24 @@ from google import genai
 from google.genai import types
 
 from .image_gen import OUTPUT_BASE
-
-# Same style as image_gen — must match for visual consistency
-WEBTOON_STYLE = (
-    "Korean webtoon style illustration. Clean digital line art with smooth cel-shading. "
-    "Soft gradient coloring with vibrant accents. Large expressive eyes with detailed highlights. "
-    "Modern manhwa aesthetic. Single panel illustration. "
-    "The illustration must fill the ENTIRE frame edge-to-edge. No white borders or margins."
-)
+from ..gcs import upload_panel
+from ..styles import get_style_prompt, get_style_config
 
 
-EDIT_PROMPT_TEMPLATE = """You are a Korean webtoon image prompt specialist.
+EDIT_PROMPT_TEMPLATE = """You are an expert sequential art image prompt specialist.
 Given an original panel's metadata and an edit instruction, create a NEW optimized
 image generation prompt that applies ONLY the requested edit while preserving everything else.
 
 RULES:
 1. Write as a narrative paragraph, NOT keywords.
 2. Start with the style directive below.
-3. Keep the character's FACE description exactly as provided (permanent identity).
+3. Keep ALL characters' FACE descriptions exactly as provided (permanent identity).
+   If multiple characters are listed, include ALL of them in the scene.
 4. Apply the edit instruction — change ONLY what was requested.
-5. Preserve: camera angle, mood, outfit, expression UNLESS the edit explicitly changes them.
-6. Include speech bubble instructions if dialogue is present.
+5. Preserve: camera angle, mood, outfits, expressions UNLESS the edit explicitly changes them.
+6. If dialogue is present, include LARGE speech bubbles with LARGE BOLD readable text.
+   Make text BIG and BOLD. Never mix languages within the same image.
+8. At the END of your prompt, append: "ALL text rendered in the image must match the dialogue language. Do not mix languages."
 7. Do NOT add white borders or margins.
 
 STYLE DIRECTIVE:
@@ -59,6 +56,7 @@ def edit_panel(
     camera_angle: str = "",
     mood: str = "",
     dialogue: str = "",
+    style: str = "k-webtoon",
     tool_context: Optional[object] = None,
 ) -> dict:
     """Regenerate a specific panel with edits. Two-step process:
@@ -94,7 +92,7 @@ def edit_panel(
     edit_response = client.models.generate_content(
         model="gemini-3-flash-preview",
         contents=[EDIT_PROMPT_TEMPLATE.format(
-            style=WEBTOON_STYLE,
+            style=get_style_prompt(style),
             face_description=face_description,
             scene_description=scene_description,
             outfit=outfit,
@@ -111,13 +109,14 @@ def edit_panel(
     edited_prompt = edit_response.text.strip()
 
     # Step 2: Generate image
+    style_cfg = get_style_config(style)
     try:
         image_response = client.models.generate_content(
             model="gemini-3.1-flash-image-preview",
             contents=[edited_prompt],
             config=types.GenerateContentConfig(
                 response_modalities=["TEXT", "IMAGE"],
-                image_config=types.ImageConfig(aspect_ratio="9:16"),
+                image_config=types.ImageConfig(aspect_ratio=style_cfg["aspect_ratio"], image_size="1K"),
             ),
         )
 
@@ -141,10 +140,18 @@ def edit_panel(
                     )
                     tool_context.save_artifact(filename, artifact_part)
 
+                # Upload to GCS
+                gcs_url = ""
+                try:
+                    gcs_url = upload_panel(session_id, filename, raw_bytes)
+                except Exception:
+                    pass
+
                 return {
                     "status": "success",
                     "panel_number": panel_number,
                     "image_path": str(image_path),
+                    "image_url": gcs_url,
                     "artifact": filename,
                     "edit_applied": edit_instruction,
                 }
