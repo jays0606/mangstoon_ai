@@ -447,7 +447,7 @@ html, body {
 .msg-ai-row {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
 }
 
 .msg-avatar {
@@ -552,7 +552,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 2px 0 2px 38px;
+  padding: 2px 0 2px 40px;
 }
 
 .msg-progress-dot {
@@ -666,7 +666,7 @@ html, body {
   flex-wrap: wrap;
   gap: 6px;
   margin: 2px 0;
-  padding-left: 38px;
+  padding-left: 40px;
 }
 
 .edit-chip {
@@ -1046,7 +1046,11 @@ html, body {
 
 .panel-scroll-item {
   width: 100%;
-  max-width: 380px;
+  max-width: 480px;
+}
+
+.panel-scroll-item .panel-card {
+  width: 100%;
 }
 
 .scroll-chapter-divider {

@@ -102,23 +102,22 @@ function StoryboardCard({
   return (
     <div
       style={{
-        background: "#fff",
-        border: "1px solid rgba(17,17,17,0.06)",
-        borderRadius: 14,
+        background: "var(--elevated)",
+        border: "1px solid var(--border)",
+        borderRadius: 12,
         padding: "16px 18px",
-        marginLeft: 38,
+        marginLeft: 40,
         maxWidth: "90%",
         display: "flex",
         flexDirection: "column",
-        gap: 12,
-        boxShadow: "0 2px 8px rgba(17,17,17,0.05)",
+        gap: 13,
       }}
     >
       {/* Title */}
       <div
         style={{
           fontFamily: "var(--font-display)",
-          fontSize: "16px",
+          fontSize: "17px",
           color: "var(--text)",
           lineHeight: 1.2,
         }}
@@ -127,23 +126,23 @@ function StoryboardCard({
       </div>
 
       {/* Characters */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {data.characters.map((c) => (
           <span
             key={c.name}
             style={{
               fontFamily: "var(--font-mono)",
-              fontSize: "10px",
-              padding: "4px 10px",
+              fontSize: "11px",
+              padding: "3px 10px",
               borderRadius: 20,
-              background: "rgba(17,17,17,0.03)",
-              border: "1px solid rgba(17,17,17,0.06)",
+              background: "rgba(17,17,17,0.05)",
+              border: "1px solid var(--border)",
               color: "var(--dim)",
-              letterSpacing: "0.03em",
+              letterSpacing: "0.04em",
             }}
           >
             {c.name}
-            <span style={{ opacity: 0.4, marginLeft: 4 }}>· {c.role}</span>
+            <span style={{ opacity: 0.45, marginLeft: 4 }}>· {c.role}</span>
           </span>
         ))}
       </div>
@@ -153,9 +152,9 @@ function StoryboardCard({
         <div
           style={{
             display: "flex",
-            borderRadius: 6,
+            borderRadius: 5,
             overflow: "hidden",
-            height: 20,
+            height: 22,
             gap: 2,
           }}
         >
@@ -234,12 +233,12 @@ function StoryboardCard({
       {activeAct && (
         <div
           style={{
-            borderTop: "1px solid rgba(17,17,17,0.05)",
+            borderTop: "1px solid var(--border)",
             paddingTop: 10,
             display: "flex",
             flexDirection: "column",
-            gap: 6,
-            maxHeight: 160,
+            gap: 7,
+            maxHeight: 180,
             overflowY: "auto",
           }}
         >
@@ -263,7 +262,7 @@ function StoryboardCard({
                 <span
                   style={{
                     fontFamily: "var(--font-body)",
-                    fontSize: "13px",
+                    fontSize: "14px",
                     color: p.dialogue ? "var(--text)" : "var(--dimmer)",
                     fontStyle: p.dialogue ? "normal" : "italic",
                     lineHeight: 1.4,
@@ -365,13 +364,14 @@ export default function ChatPanel({
       const apply = () => {
         if (type === "tool-call") {
           const td = data as { name: string; args: Record<string, unknown> };
+          // Show as progress line; save args for when result arrives
           setMessages((prev) => [
             ...prev,
             {
               id: nid(),
               role: "progress",
-              text,
-              type: "tool-activity",
+              text: `${td.name}()`,
+              type: "tool-pending" as Message["type"],
               toolData: { name: td.name, args: td.args, result: null },
             },
           ]);
@@ -379,15 +379,29 @@ export default function ChatPanel({
         }
         if (type === "tool-result") {
           const td = data as { name: string; status: string; preview: Record<string, unknown> };
+          // Find the pending tool-call and upgrade it to a full tool card
           setMessages((prev) => {
             const idx = [...prev].reverse().findIndex(
-              (m) => m.type === "tool-activity" && m.toolData?.name === td.name && !m.toolData?.result
+              (m) => (m.type as string) === "tool-pending" && m.toolData?.name === td.name && !m.toolData?.result
             );
-            if (idx === -1) return prev;
+            if (idx === -1) {
+              // No pending found — add a new card
+              return [
+                ...prev,
+                {
+                  id: nid(),
+                  role: "progress" as const,
+                  text: "",
+                  type: "tool-activity",
+                  toolData: { name: td.name, args: {}, result: { status: td.status, preview: td.preview } },
+                },
+              ];
+            }
             const realIdx = prev.length - 1 - idx;
             const updated = [...prev];
             updated[realIdx] = {
               ...updated[realIdx],
+              type: "tool-activity",
               toolData: {
                 ...updated[realIdx].toolData!,
                 result: { status: td.status, preview: td.preview },
@@ -606,6 +620,17 @@ export default function ChatPanel({
         </div>
 
         {messages.map((m) => {
+          // Pending tool call — show as simple progress line
+          if ((m.type as string) === "tool-pending" && m.toolData) {
+            return (
+              <div key={m.id} className="msg-progress fade-in">
+                <div className="msg-progress-dot" />
+                <span className="msg-progress-text">{m.toolData.name}()</span>
+              </div>
+            );
+          }
+
+          // Completed tool — show collapsible card
           if (m.type === "tool-activity" && m.toolData) {
             return (
               <div key={m.id} className="msg-progress fade-in" style={{ paddingLeft: 40 }}>
