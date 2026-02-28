@@ -25,3 +25,8 @@ output/
 .idea/
 .vscode/
 *.swp
+
+# Next.js
+frontend/.next/
+frontend/node_modules/
+frontend/.env.local
