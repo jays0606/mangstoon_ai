@@ -10,25 +10,37 @@ AI 망상툰 generator. Gemini 3 Seoul Hackathon, Feb 28 2026.
 gemini-hackathon/
 ├── CLAUDE.md
 ├── README.md
-├── .env                          # GOOGLE_API_KEY
 ├── docs/
 │   ├── hackathon-info.md         # Schedule, rules, judging, prizes
 │   ├── gemini-3.md               # Gemini 3.1 Pro/Flash API reference
 │   ├── nano-banana-image-generation.md  # Image gen API + prompting
 │   ├── adk-llms.txt              # ADK Python SDK reference
 │   └── prompt-design.md          # Gemini prompting best practices
-├── mangstoon_ai/                 # ADK agent package (to be created)
-│   ├── __init__.py
-│   ├── agent.py                  # root_agent definition
-│   ├── .env -> ../.env           # symlink or copy
-│   ├── tools/
-│   │   ├── story_engine.py       # decompose_story()
-│   │   ├── image_gen.py          # generate_panel()
-│   │   ├── panel_editor.py       # edit_panel()
-│   │   └── character.py          # extract_character()
-│   └── prompts/
-│       └── system.py
-└── frontend/                     # Custom FE (to be created)
+├── backend/
+│   ├── .env                      # GOOGLE_API_KEY
+│   ├── main.py                   # FastAPI app
+│   ├── requirements.txt
+│   └── mangstoon_ai/             # ADK agent package
+│       ├── __init__.py
+│       ├── agent.py              # root_agent definition
+│       ├── tools/
+│       │   ├── story_engine.py   # decompose_story()
+│       │   ├── image_gen.py      # generate_panel()
+│       │   ├── panel_editor.py   # edit_panel()
+│       │   └── character.py      # extract_character()
+│       └── prompts/
+│           └── system.py
+└── frontend/                     # Next.js app (deploy to Vercel)
+    ├── app/
+    │   ├── page.tsx
+    │   ├── components/
+    │   │   ├── StoryInput.tsx
+    │   │   ├── WebtoonViewer.tsx
+    │   │   └── ChatEditor.tsx
+    │   └── api/
+    │       ├── generate/route.ts  # → backend:8000/generate
+    │       └── edit/route.ts      # → backend:8000/edit
+    └── .env.local                 # BACKEND_URL=http://localhost:8000
 ```
 
 ---
@@ -36,11 +48,11 @@ gemini-hackathon/
 ## API Keys & Environment
 
 ```bash
-# .env (project root)
+# backend/.env
 GOOGLE_API_KEY=AIzaSyDyLmhnzR1swTwq7zczzkRzL7_1VtMctVI
 ```
 
-ADK reads `.env` from the agent package directory. Either symlink or copy `.env` into `mangstoon_ai/`.
+ADK reads `.env` from the directory you run `adk web` from — run it from `backend/`.
 
 ---
 
@@ -70,14 +82,21 @@ ADK reads `.env` from the agent package directory. Either symlink or copy `.env`
 
 ```bash
 # Install
-pip install google-adk
+pip install google-adk fastapi uvicorn pillow
 
-# Dev UI (mandatory demo)
-cd gemini-hackathon
+# ADK dev UI (mandatory demo) — run from backend/
+cd backend
 adk web
+# → localhost:8000, select "mangstoon_director"
 
-# → opens localhost:8000
-# → select "mangstoon_director" from dropdown
+# FastAPI backend
+cd backend
+uvicorn main:app --reload --port 8000
+
+# Next.js frontend
+cd frontend
+npm run dev
+# → localhost:3000
 ```
 
 ---
@@ -85,7 +104,7 @@ adk web
 ## Task Division
 
 ### AI (do first — P0)
-- ADK agent scaffold (`mangstoon_ai/agent.py`)
+- ADK agent scaffold (`backend/mangstoon_ai/agent.py`)
 - `decompose_story()` tool — text → 6-8 panel descriptions
 - `generate_panel()` tool — Gemini Flash Image integration
 - `edit_panel()` tool — targeted panel regeneration

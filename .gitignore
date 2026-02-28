@@ -17,6 +17,10 @@ env/
 
 # Generated output
 output/
+backend/output/
+
+# ADK
+backend/mangstoon_ai/.adk/
 
 # OS
 .DS_Store
