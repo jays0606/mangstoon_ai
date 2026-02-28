@@ -36,7 +36,7 @@ html, body {
 
 .topbar {
   flex-shrink: 0;
-  height: 52px;
+  height: 44px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   padding: 0 24px;
@@ -123,7 +123,7 @@ html, body {
   font-family: var(--font-display);
   font-size: 72px;
   color: var(--text);
-  line-height: 1;
+  line-height: 1.2;
   text-align: center;
   letter-spacing: -0.01em;
 }
@@ -137,7 +137,9 @@ html, body {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   text-align: center;
-  margin-top: -32px;
+  margin-top: 16px;
+  position: relative;
+  z-index: 1;
 }
 
 .hero-styles {

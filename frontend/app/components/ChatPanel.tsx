@@ -354,70 +354,72 @@ export default function ChatPanel({
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Register addMsg callback with parent
+  // Register addMsg callback with parent — deferred to avoid setState-during-render warnings
   useEffect(() => {
     addMsgRef.current = (
       text: string,
       type?: "sys" | "progress" | "ai" | "storyboard" | "tool-call" | "tool-result",
       data?: unknown
     ) => {
-      if (type === "tool-call") {
-        const td = data as { name: string; args: Record<string, unknown> };
+      const apply = () => {
+        if (type === "tool-call") {
+          const td = data as { name: string; args: Record<string, unknown> };
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nid(),
+              role: "progress",
+              text,
+              type: "tool-activity",
+              toolData: { name: td.name, args: td.args, result: null },
+            },
+          ]);
+          return;
+        }
+        if (type === "tool-result") {
+          const td = data as { name: string; status: string; preview: Record<string, unknown> };
+          setMessages((prev) => {
+            const idx = [...prev].reverse().findIndex(
+              (m) => m.type === "tool-activity" && m.toolData?.name === td.name && !m.toolData?.result
+            );
+            if (idx === -1) return prev;
+            const realIdx = prev.length - 1 - idx;
+            const updated = [...prev];
+            updated[realIdx] = {
+              ...updated[realIdx],
+              toolData: {
+                ...updated[realIdx].toolData!,
+                result: { status: td.status, preview: td.preview },
+              },
+            };
+            return updated;
+          });
+          return;
+        }
         setMessages((prev) => [
           ...prev,
           {
             id: nid(),
-            role: "progress",
+            role:
+              type === "ai"
+                ? "ai"
+                : type === "progress"
+                ? "progress"
+                : type === "storyboard"
+                ? "ai"
+                : "sys",
             text,
-            type: "tool-activity",
-            toolData: { name: td.name, args: td.args, result: null },
-          },
+            type:
+              type === "storyboard"
+                ? "storyboard-card"
+                : type === "ai"
+                ? "text"
+                : undefined,
+            data: data as StoryboardData | undefined,
+          } as Message,
         ]);
-        return;
-      }
-      if (type === "tool-result") {
-        const td = data as { name: string; status: string; preview: Record<string, unknown> };
-        setMessages((prev) => {
-          // Find the last tool-activity message with matching name and merge result
-          const idx = [...prev].reverse().findIndex(
-            (m) => m.type === "tool-activity" && m.toolData?.name === td.name && !m.toolData?.result
-          );
-          if (idx === -1) return prev; // no match, skip
-          const realIdx = prev.length - 1 - idx;
-          const updated = [...prev];
-          updated[realIdx] = {
-            ...updated[realIdx],
-            toolData: {
-              ...updated[realIdx].toolData!,
-              result: { status: td.status, preview: td.preview },
-            },
-          };
-          return updated;
-        });
-        return;
-      }
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: nid(),
-          role:
-            type === "ai"
-              ? "ai"
-              : type === "progress"
-              ? "progress"
-              : type === "storyboard"
-              ? "ai"
-              : "sys",
-          text,
-          type:
-            type === "storyboard"
-              ? "storyboard-card"
-              : type === "ai"
-              ? "text"
-              : undefined,
-          data: data as StoryboardData | undefined,
-        } as Message,
-      ]);
+      };
+      queueMicrotask(apply);
     };
     return () => {
       addMsgRef.current = null;
@@ -603,6 +605,14 @@ export default function ChatPanel({
         </div>
 
         {messages.map((m) => {
+          if (m.type === "tool-activity" && m.toolData) {
+            return (
+              <div key={m.id} className="msg-progress fade-in" style={{ paddingLeft: 40 }}>
+                <ToolActivityCard data={m.toolData} />
+              </div>
+            );
+          }
+
           if (m.role === "progress") {
             return (
               <div key={m.id} className="msg-progress fade-in">
@@ -616,14 +626,6 @@ export default function ChatPanel({
             return (
               <div key={m.id} className="msg-sys-divider fade-in">
                 <span className="msg-sys-text">{m.text}</span>
-              </div>
-            );
-          }
-
-          if (m.type === "tool-activity" && m.toolData) {
-            return (
-              <div key={m.id} className="msg-progress fade-in" style={{ paddingLeft: 40 }}>
-                <ToolActivityCard data={m.toolData} />
               </div>
             );
           }

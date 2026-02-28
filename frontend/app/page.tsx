@@ -112,7 +112,7 @@ export default function Home() {
     const formData = pendingFormRef.current;
     if (!formData) return;
 
-    const addMsg = addMsgRef.current;
+    const addMsg = (...args: Parameters<NonNullable<typeof addMsgRef.current>>) => addMsgRef.current?.(...args);
     const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
 
     const run = async () => {

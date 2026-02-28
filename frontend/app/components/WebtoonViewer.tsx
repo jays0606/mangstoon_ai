@@ -48,7 +48,7 @@ export default function WebtoonViewer({
   const [viewMode, setViewMode] = useState<"grid" | "scroll">("grid");
   const [zoomedPanel, setZoomedPanel] = useState<Panel | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [fullView, setFullView] = useState(false);
+  const _fullView = false; // removed feature
 
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
@@ -99,8 +99,6 @@ export default function WebtoonViewer({
         if (zoomedPanel) {
           setZoomedPanel(null);
           if (document.fullscreenElement) document.exitFullscreen();
-        } else if (fullView) {
-          setFullView(false);
         }
       }
       if (zoomedPanel) {
@@ -110,7 +108,7 @@ export default function WebtoonViewer({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [zoomedPanel, fullView, goLightboxPrev, goLightboxNext]);
+  }, [zoomedPanel, goLightboxPrev, goLightboxNext]);
 
   const handlePanelClick = (panelNumber: number, shiftKey: boolean) => {
     if (shiftKey) {
@@ -300,15 +298,6 @@ export default function WebtoonViewer({
                 : `${selectedPanels.length} selected`}
             </div>
           )}
-          {donePanels > 0 && (
-            <button
-              className="fullview-btn"
-              onClick={() => setFullView(true)}
-              title="Open full view"
-            >
-              Full View
-            </button>
-          )}
           {panels.length > 0 && (
             <div className="view-toggle">
               <button
@@ -491,44 +480,6 @@ export default function WebtoonViewer({
           <span className="gen-progress-text">
             {donePanels}/{panels.length}
           </span>
-        </div>
-      )}
-
-      {/* Full View Overlay */}
-      {fullView && (
-        <div className="fullview-overlay">
-          <div className="fullview-topbar">
-            <div className="fullview-title">
-              {storyTitle || "Mangstoon"}
-              <span className="fullview-meta">{styleName} · {donePanels} panels</span>
-            </div>
-            <button className="fullview-close" onClick={() => setFullView(false)}>
-              ESC
-            </button>
-          </div>
-          <div className="fullview-scroll">
-            {donePanelsList.map((panel, idx) => {
-              const chapter = getChapter(panel.panel_number);
-              const prevChapter = idx > 0 ? getChapter(donePanelsList[idx - 1].panel_number) : 0;
-              const showDivider = chapter !== prevChapter;
-
-              return (
-                <div key={panel.panel_number}>
-                  {showDivider && (
-                    <div className="fullview-chapter">Chapter {chapter}</div>
-                  )}
-                  <div className="fullview-panel">
-                    <img
-                      src={panel.image_url}
-                      alt={`Panel ${panel.panel_number}`}
-                      draggable={false}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-            <div className="fullview-end">End</div>
-          </div>
         </div>
       )}
 
