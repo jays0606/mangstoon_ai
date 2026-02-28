@@ -201,7 +201,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   background: var(--bg);
-  padding: 32px 24px;
+  padding: 20px 24px;
   overflow-y: auto;
 }
 
@@ -210,12 +210,12 @@ html, body {
   max-width: 640px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
 .story-heading {
   font-family: var(--font-display);
-  font-size: 48px;
+  font-size: 36px;
   color: var(--text);
   line-height: 1.1;
 }
@@ -265,13 +265,13 @@ html, body {
 .story-suggestions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .story-chip {
   font-family: var(--font-body);
   font-size: 13px;
-  padding: 10px 16px;
+  padding: 8px 14px;
   border-radius: 12px;
   background: var(--surface);
   border: 1.5px solid rgba(17, 17, 17, 0.1);
@@ -295,11 +295,11 @@ html, body {
 .selfie-upload {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 18px 20px;
+  gap: 14px;
+  padding: 14px 18px;
   background: var(--surface);
   border: 2px dashed rgba(17, 17, 17, 0.12);
-  border-radius: 16px;
+  border-radius: 14px;
 }
 
 .selfie-btn {
@@ -326,14 +326,14 @@ html, body {
 
 .btn-cta {
   width: 100%;
-  padding: 20px;
+  padding: 16px;
   font-family: var(--font-display);
   font-size: 20px;
   letter-spacing: 0.02em;
   border: none;
-  border-radius: 16px;
+  border-radius: 14px;
   transition: all 0.2s;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .btn-cta-primary {
