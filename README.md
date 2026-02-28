@@ -27,8 +27,8 @@ Type your delusion, and watch as AI generates a full 20+ panel webtoon where **y
 | **Dev UI** | **ADK Web** (`adk web`) | Browser UI for testing + demo |
 | **Backend Hosting** | **Cloud Run** (Seoul) | FastAPI server, auto-deploys on push to main |
 | **Image Storage** | **GCS** (`mangstoon-panels`) | Public URLs, Seoul region CDN |
-| **CI/CD** | **GitHub Actions** + WIF | Push to main → Cloud Run deploy |
-| **Frontend Hosting** | **Vercel** | Next.js SSR + API proxy |
+| **CI/CD** | **GitHub Actions** + WIF | Push to main → Cloud Run deploy (backend) |
+| **Frontend Hosting** | **Vercel** | Next.js, auto-deploys on push to main |
 | **Language** | Python 3.12+ | |
 
 ---
@@ -158,7 +158,7 @@ Backend:  https://mangstoon-backend-qlxchgmpvq-du.a.run.app
 Images:   https://storage.googleapis.com/mangstoon-panels/{session}/panel_01.png
 ```
 
-CI/CD: push to `main` → GitHub Actions → Cloud Run auto-deploy.
+CI/CD: push to `main` → GitHub Actions → Cloud Run (backend) + Vercel (frontend) auto-deploy.
 
 ---
 

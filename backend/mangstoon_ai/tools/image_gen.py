@@ -35,10 +35,11 @@ RULES — follow these EXACTLY:
 5. The scene_description already contains the location/background details. Reproduce them
    faithfully — the background must look consistent across panels in the same setting.
 6. Include camera angle, lighting, and mood naturally in the narrative.
-7. If there is dialogue, add speech bubble instruction:
-   - speech: 'Include a LARGE white speech bubble with rounded edges and bold black outline near the character, with LARGE BOLD readable text in {language}: "[text]"'
-   - thought: 'Include a LARGE cloud-shaped thought bubble near the character with LARGE BOLD readable text in {language}: "[text]"'
-   - narration: 'Include a wide rectangular narration box at the bottom with dark semi-transparent background and LARGE BOLD white text in {language}: "[text]"'
+7. If there is dialogue, add EXACTLY ONE speech bubble instruction — do NOT duplicate:
+   - speech: 'Include exactly ONE LARGE white speech bubble with rounded edges and bold black outline near the character, containing LARGE BOLD readable text in {language}: "[text]"'
+   - thought: 'Include exactly ONE LARGE cloud-shaped thought bubble near the character containing LARGE BOLD readable text in {language}: "[text]"'
+   - narration: 'Include exactly ONE wide rectangular narration box at the bottom with dark semi-transparent background and LARGE BOLD white text in {language}: "[text]"'
+   IMPORTANT: Each distinct quoted dialogue line = exactly ONE bubble. Multiple characters may each have their own bubble with DIFFERENT text, but never repeat the same text in two bubbles.
    Make text BIG and BOLD — at least 1/8 the width of the bubble.
 8. Keep speech bubble text under 10 words for maximum readability.
 9. Ensure the scene fills the entire canvas — describe a rich, detailed background that extends to every edge.

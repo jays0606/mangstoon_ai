@@ -154,6 +154,7 @@ async def _run_agent_stream_events(
                 yield _sse({
                     "type": "tool_call",
                     "name": fc.name,
+                    "args": dict(fc.args) if fc.args else {},
                     "author": event.author,
                 })
 
@@ -161,10 +162,24 @@ async def _run_agent_stream_events(
             fr = getattr(part, "function_response", None)
             if fr and fr.name == tool_name:
                 captured = dict(fr.response) if fr.response else {}
+                # Build a trimmed preview (full storyboard is too large)
+                result_data = captured
+                preview = {}
+                if fr.name == "decompose_story":
+                    sb = result_data.get("storyboard", {})
+                    preview = {
+                        "title": sb.get("title", ""),
+                        "panel_count": result_data.get("panel_count", 0),
+                        "characters": [c.get("name") for c in sb.get("characters", [])],
+                        "acts": list({p.get("act", "") for p in sb.get("panels", [])}),
+                    }
+                else:
+                    preview = {k: v for k, v in result_data.items() if k != "artifact"}
                 yield _sse({
                     "type": "tool_result",
                     "name": fr.name,
                     "status": captured.get("status", "unknown"),
+                    "preview": preview,
                 })
                 break
 

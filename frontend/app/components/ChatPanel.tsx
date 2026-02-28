@@ -16,6 +16,15 @@ type StoryboardData = {
   panel_count: number;
 };
 
+type ToolActivityData = {
+  name: string;
+  args?: Record<string, unknown>;
+  result?: {
+    status: string;
+    preview: Record<string, unknown>;
+  } | null;
+};
+
 type Props = {
   panels: Panel[];
   isGenerating: boolean;
@@ -27,8 +36,8 @@ type Props = {
   addMsgRef: MutableRefObject<
     | ((
         text: string,
-        type?: "sys" | "progress" | "ai" | "storyboard",
-        data?: StoryboardData
+        type?: "sys" | "progress" | "ai" | "storyboard" | "tool-call" | "tool-result",
+        data?: unknown
       ) => void)
     | null
   >;
@@ -38,8 +47,9 @@ type Message = {
   id: number;
   role: "user" | "ai" | "sys" | "progress";
   text: string;
-  type?: "text" | "edit-examples" | "storyboard-card";
+  type?: "text" | "edit-examples" | "storyboard-card" | "tool-activity";
   data?: StoryboardData;
+  toolData?: ToolActivityData;
 };
 
 let _id = 0;
@@ -269,6 +279,62 @@ function StoryboardCard({
   );
 }
 
+// ── Tool Activity Card ────────────────────────────────────────────────────────
+function ToolActivityCard({ data }: { data: ToolActivityData }) {
+  const [open, setOpen] = useState(false);
+  const hasResult = !!data.result;
+  const statusIcon = hasResult
+    ? data.result!.status === "success" ? "\u2713" : "\u2717"
+    : "\u2026";
+
+  const renderValue = (v: unknown): string => {
+    if (typeof v === "string") return v.length > 120 ? v.slice(0, 120) + "\u2026" : v;
+    if (typeof v === "number" || typeof v === "boolean") return String(v);
+    if (Array.isArray(v)) return v.map((x) => (typeof x === "string" ? x : JSON.stringify(x))).join(", ");
+    if (v && typeof v === "object") return JSON.stringify(v).slice(0, 120);
+    return String(v);
+  };
+
+  return (
+    <div className={`tool-card ${open ? "tool-card-open" : ""}`}>
+      <button className="tool-card-header" onClick={() => setOpen(!open)}>
+        <span className="tool-card-icon">{hasResult ? statusIcon : "\u2699"}</span>
+        <span className="tool-card-name">{data.name}()</span>
+        <span className={`tool-card-status ${hasResult ? (data.result!.status === "success" ? "success" : "error") : "pending"}`}>
+          {hasResult ? data.result!.status : "running"}
+        </span>
+        <span className="tool-card-chevron">{open ? "\u25B4" : "\u25BE"}</span>
+      </button>
+      {open && (
+        <div className="tool-card-body">
+          {data.args && Object.keys(data.args).length > 0 && (
+            <div className="tool-card-section">
+              <div className="tool-card-section-label">Input</div>
+              {Object.entries(data.args).map(([k, v]) => (
+                <div key={k} className="tool-card-kv">
+                  <span className="tool-card-key">{k}:</span>
+                  <span className="tool-card-val">{renderValue(v)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {data.result && (
+            <div className="tool-card-section">
+              <div className="tool-card-section-label">Result</div>
+              {Object.entries(data.result.preview).map(([k, v]) => (
+                <div key={k} className="tool-card-kv">
+                  <span className="tool-card-key">{k}:</span>
+                  <span className="tool-card-val">{renderValue(v)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function ChatPanel({
   panels,
@@ -292,9 +358,44 @@ export default function ChatPanel({
   useEffect(() => {
     addMsgRef.current = (
       text: string,
-      type?: "sys" | "progress" | "ai" | "storyboard",
-      data?: StoryboardData
+      type?: "sys" | "progress" | "ai" | "storyboard" | "tool-call" | "tool-result",
+      data?: unknown
     ) => {
+      if (type === "tool-call") {
+        const td = data as { name: string; args: Record<string, unknown> };
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nid(),
+            role: "progress",
+            text,
+            type: "tool-activity",
+            toolData: { name: td.name, args: td.args, result: null },
+          },
+        ]);
+        return;
+      }
+      if (type === "tool-result") {
+        const td = data as { name: string; status: string; preview: Record<string, unknown> };
+        setMessages((prev) => {
+          // Find the last tool-activity message with matching name and merge result
+          const idx = [...prev].reverse().findIndex(
+            (m) => m.type === "tool-activity" && m.toolData?.name === td.name && !m.toolData?.result
+          );
+          if (idx === -1) return prev; // no match, skip
+          const realIdx = prev.length - 1 - idx;
+          const updated = [...prev];
+          updated[realIdx] = {
+            ...updated[realIdx],
+            toolData: {
+              ...updated[realIdx].toolData!,
+              result: { status: td.status, preview: td.preview },
+            },
+          };
+          return updated;
+        });
+        return;
+      }
       setMessages((prev) => [
         ...prev,
         {
@@ -314,7 +415,7 @@ export default function ChatPanel({
               : type === "ai"
               ? "text"
               : undefined,
-          data,
+          data: data as StoryboardData | undefined,
         } as Message,
       ]);
     };
@@ -515,6 +616,14 @@ export default function ChatPanel({
             return (
               <div key={m.id} className="msg-sys-divider fade-in">
                 <span className="msg-sys-text">{m.text}</span>
+              </div>
+            );
+          }
+
+          if (m.type === "tool-activity" && m.toolData) {
+            return (
+              <div key={m.id} className="msg-progress fade-in" style={{ paddingLeft: 40 }}>
+                <ToolActivityCard data={m.toolData} />
               </div>
             );
           }

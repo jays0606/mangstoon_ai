@@ -78,30 +78,47 @@ export default function Home() {
   const addMsgRef = useRef<
     | ((
         text: string,
-        type?: "sys" | "progress" | "ai" | "storyboard",
+        type?: "sys" | "progress" | "ai" | "storyboard" | "tool-call" | "tool-result",
         data?: unknown
       ) => void)
     | null
   >(null);
 
-  const handleGenerate = async () => {
+  // Pending generate — set true to kick off fetch after ChatPanel mounts
+  const [pendingGenerate, setPendingGenerate] = useState(false);
+  // Capture story/style/selfie at trigger time so the effect closure is stable
+  const pendingFormRef = useRef<FormData | null>(null);
+
+  const handleGenerate = () => {
     if (!story.trim()) return;
-    const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+    const formData = new FormData();
+    formData.append("story", story.trim());
+    if (selectedStyle) formData.append("style", selectedStyle.id);
+    if (selfieFile) formData.append("selfie", selfieFile);
+    pendingFormRef.current = formData;
 
     setPhase(2);
     setIsGenerating(true);
     setStoryTitle("Generating...");
     setPanels([]);
     setGenProgress({ current: 0, total: 0 });
+    setPendingGenerate(true); // fires useEffect AFTER ChatPanel has mounted + registered addMsg
+  };
 
-    const formData = new FormData();
-    formData.append("story", story.trim());
-    if (selectedStyle) formData.append("style", selectedStyle.id);
-    if (selfieFile) formData.append("selfie", selfieFile);
+  // Actual SSE fetch — runs after ChatPanel has mounted and registered addMsgRef.current
+  useEffect(() => {
+    if (!pendingGenerate) return;
+    setPendingGenerate(false);
+    const formData = pendingFormRef.current;
+    if (!formData) return;
 
     const addMsg = addMsgRef.current;
+    const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
 
-    try {
+    const run = async () => {
+      let panelsDoneCount = 0;
+      let panelsTotalCount = 0;
+      try {
       const res = await fetch(`${BACKEND}/generate/stream`, { method: "POST", body: formData });
       if (!res.body) throw new Error("No response body");
       const reader = res.body.getReader();
@@ -125,9 +142,9 @@ export default function Home() {
           } else if (event.type === "text") {
             if (event.content?.trim()) addMsg?.(event.content.trim(), "ai");
           } else if (event.type === "tool_call") {
-            addMsg?.(`⚙ ${event.name}()`, "progress");
+            addMsg?.(event.name, "tool-call", { name: event.name, args: event.args ?? {} });
           } else if (event.type === "tool_result") {
-            addMsg?.(`✓ ${event.name} → ${event.status}`, "progress");
+            addMsg?.(event.name, "tool-result", { name: event.name, status: event.status, preview: event.preview ?? {} });
           } else if (event.type === "character") {
             setCharacterDescription(event.face_description ?? "");
             setCharacterImage(event.face_ref_image ?? "");
@@ -153,6 +170,8 @@ export default function Home() {
               image_prompt: "",
               status: "gen" as const,
             })));
+            panelsTotalCount = count;
+            panelsDoneCount = 0;
             setGenProgress({ current: 0, total: count });
             addMsg?.("storyboard", "storyboard", {
               title: event.title,
@@ -172,18 +191,18 @@ export default function Home() {
                 x.panel_number === p.panel_number ? { ...p, status: "done" as const } : x
               )
             );
-            setGenProgress((prev) => {
-              const next = prev.current + 1;
-              // Show milestone messages: first, every 5th, and last
-              if (next === 1) {
-                addMsg?.(`First panel ready — ${prev.total - 1} more rendering...`, "progress");
-              } else if (next === prev.total) {
-                addMsg?.(`All ${prev.total} panels rendered`, "progress");
-              } else if (next % 5 === 0) {
-                addMsg?.(`${next}/${prev.total} panels done`, "progress");
-              }
-              return { ...prev, current: next };
-            });
+            // Track count outside updater to avoid React strict mode double-fire
+            panelsDoneCount++;
+            const next = panelsDoneCount;
+            const total = panelsTotalCount;
+            if (next === 1) {
+              addMsg?.(`First panel ready \u2014 ${total - 1} more rendering...`, "progress");
+            } else if (next === total) {
+              addMsg?.(`All ${total} panels rendered`, "progress");
+            } else if (next % 5 === 0) {
+              addMsg?.(`${next}/${total} panels done`, "progress");
+            }
+            setGenProgress({ current: next, total });
           } else if (event.type === "error") {
             addMsg?.(event.message ?? "Generation failed", "sys");
             setIsGenerating(false);
@@ -200,7 +219,11 @@ export default function Home() {
     }
 
     setIsGenerating(false);
-  };
+    }; // end run
+
+    run();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingGenerate]);
 
   const handleEdit = async (panelNumber: number, instruction: string) => {
     setPanels((prev) =>

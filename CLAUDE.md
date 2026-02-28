@@ -243,8 +243,8 @@ Both `generate_panel` and `edit_panel` upload to GCS after saving locally.
 Falls back to base64 if GCS upload fails.
 
 ### Frontend — Vercel
-Deploy via `vercel deploy` from `frontend/`.
-Set `NEXT_PUBLIC_API_URL` to the Cloud Run URL.
+Auto-deploys on push to `main` via Vercel Git integration.
+Set `NEXT_PUBLIC_BACKEND_URL` env var in Vercel project settings to the Cloud Run URL.
 
 ---
 
