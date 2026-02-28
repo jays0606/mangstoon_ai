@@ -39,10 +39,10 @@ export const STYLES: Style[] = [
 ];
 
 const STORY_SUGGESTIONS = [
-  "I'm a broke developer who wins the Gemini hackathon. Google flies me business class to Mountain View. I give a keynote at Google I/O.",
-  "I become an idol trainee at HYBE. I debut in a K-pop group and perform at Coachella.",
-  "I get isekai'd into a fantasy world where I'm the chosen hero with overpowered magic.",
-  "I travel back to Joseon dynasty Korea and accidentally become a royal advisor to the king.",
+  "I'm a broke developer who wins the Gemini hackathon in Seoul. Google flies me business class to Mountain View. I give a keynote at Google I/O. Backstage, I bump into Jisoo from BLACKPINK \u2014 turns out she's super into AI. We exchange numbers. We start dating.",
+  "I'm a regular office worker in Gangnam. One day I find a mysterious USB drive that gives me the power to control any AI model. Tech giants start bidding for my abilities. Elon offers me Twitter, but I choose to build my own startup instead. It becomes the biggest company in Korea.",
+  "I upload a random K-pop dance cover on YouTube. It goes viral overnight \u2014 50 million views. HYBE calls me in for an audition. I debut in a new group, perform at Coachella, and win a Grammy. My parents finally think I made a good life choice.",
+  "I accidentally get isekai'd into a fantasy world where coding is magic. My Python skills make me the most powerful sorcerer. I defeat the demon king with a well-optimized algorithm, save the kingdom, and become the legendary hero they write songs about.",
 ];
 
 export default function Home() {
@@ -75,7 +75,14 @@ export default function Home() {
   };
 
   // addMsg callback ref — ChatPanel registers its addMsg function here
-  const addMsgRef = useRef<((text: string, type?: "sys" | "progress" | "ai") => void) | null>(null);
+  const addMsgRef = useRef<
+    | ((
+        text: string,
+        type?: "sys" | "progress" | "ai" | "storyboard",
+        data?: unknown
+      ) => void)
+    | null
+  >(null);
 
   const handleGenerate = async () => {
     if (!story.trim()) return;
@@ -132,16 +139,32 @@ export default function Home() {
               setCharacterDescription(event.character_description);
             }
             const count = event.panel_count as number;
+            const panelsMeta = event.panels_meta as Array<{
+              panel_number: number;
+              act?: string;
+              dialogue?: string;
+              character_names?: string[];
+            }> | undefined;
             setPanels(Array.from({ length: count }, (_, i) => ({
               panel_number: i + 1,
               image_url: "",
-              dialogue: [],
-              narration: "",
+              dialogue: panelsMeta?.[i]?.dialogue ? [panelsMeta[i].dialogue as string] : [],
+              narration: panelsMeta?.[i]?.act ?? "",
               image_prompt: "",
-              status: "wait" as const,
+              status: "gen" as const,
             })));
             setGenProgress({ current: 0, total: count });
-            addMsg?.(`\u2726 "${event.title}" \u00B7 ${count} panels`, "progress");
+            addMsg?.("storyboard", "storyboard", {
+              title: event.title,
+              characters: event.characters ?? [],
+              panels_meta: (event.panels_meta ?? []).map((p: { panel_number: number; act?: string; dialogue?: string; character_names?: string[] }) => ({
+                panel_number: p.panel_number,
+                act: p.act ?? "",
+                dialogue: p.dialogue ?? "",
+                character_names: p.character_names ?? [],
+              })),
+              panel_count: count,
+            });
           } else if (event.type === "panel") {
             const p = event.panel as Panel;
             setPanels((prev) =>
@@ -149,14 +172,26 @@ export default function Home() {
                 x.panel_number === p.panel_number ? { ...p, status: "done" as const } : x
               )
             );
-            setGenProgress((prev) => ({ ...prev, current: prev.current + 1 }));
-            addMsg?.(`Panel ${p.panel_number} \u00B7 ${p.narration || "done"}`, "progress");
+            setGenProgress((prev) => {
+              const next = prev.current + 1;
+              // Show milestone messages: first, every 5th, and last
+              if (next === 1) {
+                addMsg?.(`First panel ready — ${prev.total - 1} more rendering...`, "progress");
+              } else if (next === prev.total) {
+                addMsg?.(`All ${prev.total} panels rendered`, "progress");
+              } else if (next % 5 === 0) {
+                addMsg?.(`${next}/${prev.total} panels done`, "progress");
+              }
+              return { ...prev, current: next };
+            });
           } else if (event.type === "error") {
             addMsg?.(event.message ?? "Generation failed", "sys");
             setIsGenerating(false);
           } else if (event.type === "done") {
             setSessionId(event.session_id ?? sessionId);
-            setIsGenerating(false);
+            // Don't set isGenerating=false here — the finally block after the loop handles it.
+            // Setting it here causes a race: React batches this with panel updates,
+            // so the completion effect sees 0 done panels.
           }
         }
       }
@@ -327,7 +362,7 @@ export default function Home() {
                   className="story-chip"
                   onClick={() => setStory(s)}
                 >
-                  {s}
+                  {s.length > 100 ? s.slice(0, 100).trimEnd() + "..." : s}
                 </button>
               ))}
             </div>
@@ -405,6 +440,7 @@ export default function Home() {
             isGenerating={isGenerating}
             selectedPanels={selectedPanels}
             userStory={story}
+            genProgress={genProgress}
             onEdit={handleEdit}
             onSelectPanels={setSelectedPanels}
             addMsgRef={addMsgRef}
@@ -420,6 +456,7 @@ export default function Home() {
               styleName={selectedStyle?.title ?? ""}
               storyTitle={storyTitle}
               characterImage={characterImage}
+              userStory={story}
             />
           </div>
         </div>

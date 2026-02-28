@@ -24,6 +24,7 @@ from mangstoon_ai.agent import root_agent
 from mangstoon_ai.styles import STYLE_NAMES
 from mangstoon_ai.tools.character import extract_character
 from mangstoon_ai.tools.image_gen import (
+    _detect_language,
     _generate_single_panel,
     _get_session_dir,
 )
@@ -315,6 +316,9 @@ async def generate_stream(
         # 5. Fire all panels in parallel, stream each as it completes
         yield _sse({"type": "status", "message": f"Generating {len(panels_meta)} panels in parallel..."})
 
+        # Detect language from user story for consistent text rendering
+        lang = _detect_language(story)
+
         queue: asyncio.Queue = asyncio.Queue()
 
         async def gen_one_queued(panel_meta: dict):
@@ -366,6 +370,7 @@ async def generate_stream(
                     session_dir=session_dir,
                     session_id=session_id,
                     style=style,
+                    language=lang,
                 )
             except Exception as e:
                 result = {"status": "error", "panel_number": panel_meta["panel_number"], "message": str(e)}
@@ -452,6 +457,8 @@ async def generate(
     session_dir = _get_session_dir(session_id)
 
     # 4. Generate all panels in parallel
+    lang = _detect_language(story)
+
     async def gen_one(panel_meta: dict):
         # Multi-character support
         char_names = panel_meta.get("character_names", [])
@@ -486,6 +493,7 @@ async def generate(
             session_dir=session_dir,
             session_id=session_id,
             style=style,
+            language=lang,
         )
         return result, panel_meta
 

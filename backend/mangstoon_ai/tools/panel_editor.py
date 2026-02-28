@@ -21,10 +21,12 @@ RULES:
    If multiple characters are listed, include ALL of them in the scene.
 4. Apply the edit instruction — change ONLY what was requested.
 5. Preserve: camera angle, mood, outfits, expressions UNLESS the edit explicitly changes them.
-6. If dialogue is present, include LARGE speech bubbles with LARGE BOLD readable text.
-   Make text BIG and BOLD. Never mix languages within the same image.
-8. At the END of your prompt, append: "ALL text rendered in the image must match the dialogue language. Do not mix languages."
-7. Do NOT add white borders or margins.
+6. If dialogue is present, include LARGE speech bubbles with LARGE BOLD readable text in {language}.
+   Make text BIG and BOLD.
+7. Ensure the scene fills the entire canvas — full-bleed composition, background extends to every edge corner to corner.
+8. CRITICAL — LANGUAGE CONSISTENCY: ALL visible text in the image MUST be in {language}.
+   Speech bubbles, signs, storefronts, neon lights, screens — everything readable is in {language}. Do not mix languages.
+   At the END of your prompt, append: "All visible text, signage, and speech bubbles in this image are written in {language} only."
 
 STYLE DIRECTIVE:
 {style}
@@ -57,6 +59,7 @@ def edit_panel(
     mood: str = "",
     dialogue: str = "",
     style: str = "k-webtoon",
+    language: str = "English",
     tool_context: Optional[object] = None,
 ) -> dict:
     """Regenerate a specific panel with edits. Two-step process:
@@ -101,6 +104,7 @@ def edit_panel(
             mood=mood,
             dialogue=dialogue,
             edit_instruction=edit_instruction,
+            language=language,
         )],
         config=types.GenerateContentConfig(
             thinking_config=types.ThinkingConfig(thinking_level="minimal"),

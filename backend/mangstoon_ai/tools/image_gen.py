@@ -36,20 +36,25 @@ RULES — follow these EXACTLY:
    faithfully — the background must look consistent across panels in the same setting.
 6. Include camera angle, lighting, and mood naturally in the narrative.
 7. If there is dialogue, add speech bubble instruction:
-   - speech: 'Include a LARGE white speech bubble with rounded edges and bold black outline near the character, with LARGE BOLD readable text in English: "[text]"'
-   - thought: 'Include a LARGE cloud-shaped thought bubble near the character with LARGE BOLD readable text: "[text]"'
-   - narration: 'Include a wide rectangular narration box at the bottom with dark semi-transparent background and LARGE BOLD white text: "[text]"'
+   - speech: 'Include a LARGE white speech bubble with rounded edges and bold black outline near the character, with LARGE BOLD readable text in {language}: "[text]"'
+   - thought: 'Include a LARGE cloud-shaped thought bubble near the character with LARGE BOLD readable text in {language}: "[text]"'
+   - narration: 'Include a wide rectangular narration box at the bottom with dark semi-transparent background and LARGE BOLD white text in {language}: "[text]"'
    Make text BIG and BOLD — at least 1/8 the width of the bubble.
 8. Keep speech bubble text under 10 words for maximum readability.
-9. Do NOT include any instructions about leaving white space or margins.
-10. CRITICAL: At the END of your prompt, always append this exact line:
-    "ALL text rendered in the image must match the dialogue language provided above. Do not mix languages."
+9. Ensure the scene fills the entire canvas — describe a rich, detailed background that extends to every edge.
+    Use "full-bleed composition" language. The background covers the entire frame corner to corner.
+10. CRITICAL — LANGUAGE CONSISTENCY: ALL visible text in the image MUST be in {language}.
+    This means speech bubbles, signs, storefronts, neon lights, posters, screens — everything readable is in {language}.
+    Do NOT mix languages. Every piece of text must be consistently in {language}.
+    At the END of your prompt, always append: "All visible text, signage, and speech bubbles in this image are written in {language} only. Do not mix languages."
 
 STYLE DIRECTIVE (include at the start):
 {style}
 
 CHARACTER FACES (permanent — include exactly as-is for each character):
 {face_description}
+
+DIALOGUE LANGUAGE: {language}
 
 PANEL METADATA:
 - Outfits: {outfit}
@@ -61,6 +66,19 @@ PANEL METADATA:
 - Dialogue type: {dialogue_type}
 
 Return ONLY the final image prompt. Nothing else."""
+
+
+def _detect_language(text: str) -> str:
+    """Simple language detection based on character ranges."""
+    if not text:
+        return "English"
+    korean_count = sum(1 for c in text if '\uac00' <= c <= '\ud7a3' or '\u3131' <= c <= '\u3163')
+    japanese_count = sum(1 for c in text if '\u3040' <= c <= '\u309f' or '\u30a0' <= c <= '\u30ff')
+    if korean_count > 2:
+        return "Korean"
+    if japanese_count > 2:
+        return "Japanese"
+    return "English"
 
 
 def _generate_single_panel(
@@ -76,10 +94,13 @@ def _generate_single_panel(
     session_dir: Path | None = None,
     session_id: str | None = None,
     style: str = "k-webtoon",
+    language: str | None = None,
 ) -> dict:
     """Internal: generate one panel (prompt optimize → image gen). No tool_context."""
     if session_dir is None:
         session_dir = _get_session_dir()
+    if language is None:
+        language = _detect_language(dialogue)
     client = genai.Client()
 
     # Step 1: Optimize the image prompt
@@ -95,6 +116,7 @@ def _generate_single_panel(
             mood=mood,
             dialogue=dialogue,
             dialogue_type=dialogue_type,
+            language=language,
         )],
         config=types.GenerateContentConfig(
             thinking_config=types.ThinkingConfig(thinking_level="minimal"),
@@ -181,6 +203,10 @@ def generate_all_panels(panels_json: str, style: str = "k-webtoon", tool_context
     if not panels:
         return {"status": "error", "message": "No panels in storyboard"}
 
+    # Detect language from first panel's dialogue
+    first_dialogue = next((p.get("dialogue", "") for p in panels if p.get("dialogue")), "")
+    lang = _detect_language(first_dialogue)
+
     # Create a session-specific output directory
     session_id = uuid.uuid4().hex[:8]
     session_dir = _get_session_dir(session_id)
@@ -224,6 +250,7 @@ def generate_all_panels(panels_json: str, style: str = "k-webtoon", tool_context
                 session_dir=session_dir,
                 session_id=session_id,
                 style=style,
+                language=lang,
             )
             futures[future] = panel["panel_number"]
 

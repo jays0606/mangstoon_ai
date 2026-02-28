@@ -34,3 +34,24 @@ backend/mangstoon_ai/.adk/
 frontend/.next/
 frontend/node_modules/
 frontend/.env.local
+.vercel
+
+# Root node_modules (pptxgenjs install)
+node_modules/
+package.json
+package-lock.json
+yarn.lock
+
+# Pitch deck generator (keep .pptx, ignore .js build script)
+pitch-deck/pitch-deck.js
+
+# Claude / Playwright temp
+.claude/
+.playwright-mcp/
+
+# Screenshots (temp)
+*.png
+!pitch-deck/*.png
+
+# Lock files
+uv.lock

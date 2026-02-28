@@ -5,33 +5,37 @@ STYLE_PROMPTS: dict[str, str] = {
         "Korean webtoon style illustration. Clean digital line art with smooth cel-shading. "
         "Soft gradient coloring with vibrant accents. Large expressive eyes with detailed highlights. "
         "Modern manhwa aesthetic. Single panel illustration. "
-        "The illustration must fill the ENTIRE frame edge-to-edge. No white borders or margins."
+        "Full-bleed composition where the background and scene extend to every edge of the canvas. "
+        "The entire image is filled with artwork from corner to corner."
     ),
     "anime": (
         "Japanese anime style illustration. Vibrant colors with clean cel-shading and bold outlines. "
         "Large detailed eyes with colorful iris reflections and highlights. Dynamic hair with flowing strands. "
         "Smooth gradient backgrounds with atmospheric effects. Single panel illustration. "
-        "The illustration must fill the ENTIRE frame edge-to-edge. No white borders or margins."
+        "Full-bleed composition where the background and scene extend to every edge of the canvas. "
+        "The entire image is filled with artwork from corner to corner."
     ),
     "comic": (
         "American comic book style illustration. Bold ink outlines with varying line weight. "
         "Rich saturated colors with dramatic cel-shading and strong cast shadows. "
         "Dynamic figure work. Detailed crosshatching in shadow areas. "
-        "The illustration must fill the ENTIRE frame edge-to-edge. No white borders or margins."
+        "Full-bleed composition where the background and scene extend to every edge of the canvas. "
+        "The entire image is filled with artwork from corner to corner."
     ),
     "cinematic": (
         "Cinematic Korean manhwa style. Semi-realistic digital painting with detailed "
         "rendering. Dramatic cinematic lighting with volumetric effects. Rich deep color "
         "palette with glowing accent highlights. Detailed background environments. "
         "Painterly brushwork visible in shading. Epic composition. "
-        "The illustration must fill the ENTIRE frame edge-to-edge. No white borders or margins."
+        "Full-bleed composition where the background and scene extend to every edge of the canvas. "
+        "The entire image is filled with artwork from corner to corner."
     ),
 }
 
 STYLE_CONFIGS: dict[str, dict] = {
     "k-webtoon": {"aspect_ratio": "9:16"},
-    "anime": {"aspect_ratio": "3:4"},
-    "comic": {"aspect_ratio": "2:3"},
+    "anime": {"aspect_ratio": "9:16"},
+    "comic": {"aspect_ratio": "9:16"},
     "cinematic": {"aspect_ratio": "9:16"},
 }
 

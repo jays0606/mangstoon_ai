@@ -12,6 +12,7 @@ type Props = {
   styleName: string;
   storyTitle: string;
   characterImage?: string;
+  userStory?: string;
 };
 
 const PANEL_GRADIENTS = [
@@ -42,12 +43,40 @@ export default function WebtoonViewer({
   styleName,
   storyTitle,
   characterImage,
+  userStory,
 }: Props) {
   const [viewMode, setViewMode] = useState<"grid" | "scroll">("grid");
   const [zoomedPanel, setZoomedPanel] = useState<Panel | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
 
   const donePanels = panels.filter((p) => p.status === "done").length;
   const donePanelsList = panels.filter((p) => p.status === "done");
+
+  // Loading step progression
+  const [loadingStep, setLoadingStep] = useState(0);
+  useEffect(() => {
+    if (!isGenerating || panels.length > 0) {
+      setLoadingStep(0);
+      return;
+    }
+    const t1 = setTimeout(() => setLoadingStep(1), 3000);
+    const t2 = setTimeout(() => setLoadingStep(2), 8000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [isGenerating, panels.length]);
 
   // Lightbox navigation
   const zoomedIdx = zoomedPanel
@@ -66,7 +95,10 @@ export default function WebtoonViewer({
   useEffect(() => {
     if (!zoomedPanel) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setZoomedPanel(null);
+      if (e.key === "Escape") {
+      setZoomedPanel(null);
+      if (document.fullscreenElement) document.exitFullscreen();
+    }
       if (e.key === "ArrowLeft") goLightboxPrev();
       if (e.key === "ArrowRight") goLightboxNext();
     };
@@ -183,6 +215,28 @@ export default function WebtoonViewer({
           <div className="panel-gen-content">
             <div className="panel-gen-icon" />
             <div className="panel-gen-text">Rendering</div>
+            {panel.narration && (
+              <div style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "7px",
+                color: "rgba(17,17,17,0.25)",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                marginTop: 2,
+              }}>{panel.narration}</div>
+            )}
+            {panel.dialogue?.[0] && (
+              <div style={{
+                fontFamily: "var(--font-body)",
+                fontSize: "9px",
+                color: "rgba(17,17,17,0.3)",
+                textAlign: "center",
+                padding: "0 12px",
+                lineHeight: 1.4,
+                maxWidth: "90%",
+                marginTop: 4,
+              }}>"{panel.dialogue[0]}"</div>
+            )}
           </div>
         ) : (
           <div
@@ -209,29 +263,23 @@ export default function WebtoonViewer({
     );
   };
 
+  const showLoadingState = isGenerating && panels.length === 0;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Header */}
       <div className="panel-grid-header">
-        <div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <div className="panel-grid-label">
             Mangstoon · {styleName || "K-Webtoon"}
           </div>
-          {storyTitle && storyTitle !== "Generating..." ? (
-            <div className="panel-grid-title">{storyTitle}</div>
-          ) : isGenerating ? (
-            <div
-              className="panel-grid-title"
-              style={{ color: "var(--dim)", fontSize: "14px", fontFamily: "var(--font-mono)" }}
-            >
-              Crafting storyboard...
-            </div>
-          ) : null}
+          {panels.length > 0 && (
+            <span className="panel-grid-count" style={{ margin: 0 }}>
+              {donePanels}/{panels.length}
+            </span>
+          )}
         </div>
-        <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
-          <div className="panel-grid-count">
-            {panels.length > 0 ? `${donePanels}/${panels.length} panels` : "—"}
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           {selectedPanels.length > 0 && (
             <div
               style={{
@@ -246,7 +294,6 @@ export default function WebtoonViewer({
                 : `${selectedPanels.length} selected`}
             </div>
           )}
-          {/* View toggle */}
           {panels.length > 0 && (
             <div className="view-toggle">
               <button
@@ -270,6 +317,60 @@ export default function WebtoonViewer({
 
       {/* Panel content */}
       <div style={{ flex: 1, overflowY: "auto" }}>
+        {/* Loading state — crafting storyboard */}
+        {showLoadingState && (
+          <div className="loading-state fade-in">
+            <div className="loading-orb">
+              <div className="loading-orb-ring" />
+              <div className="loading-orb-ring" />
+              <div className="loading-orb-ring" />
+              <div className="loading-orb-center" />
+            </div>
+            {userStory && (
+              <div style={{
+                fontFamily: "var(--font-body)",
+                fontSize: "13px",
+                color: "var(--dim)",
+                textAlign: "center",
+                maxWidth: 320,
+                lineHeight: 1.5,
+                fontStyle: "italic",
+              }}>
+                &ldquo;{userStory.length > 80 ? userStory.slice(0, 80).trimEnd() + "..." : userStory}&rdquo;
+              </div>
+            )}
+            <div className="loading-title">Crafting your webtoon</div>
+            <div className="loading-subtitle">This takes about 30 seconds</div>
+            <div className="loading-steps">
+              <div className={`loading-step ${loadingStep === 0 ? "active" : "done"}`}>
+                <div className="loading-step-dot" />
+                {loadingStep > 0 ? "Story analyzed" : "Analyzing story structure"}
+              </div>
+              <div className={`loading-step ${loadingStep === 1 ? "active" : loadingStep > 1 ? "done" : ""}`}>
+                <div className="loading-step-dot" />
+                {loadingStep > 1 ? "Storyboard ready" : "Building 5-act storyboard"}
+              </div>
+              <div className={`loading-step ${loadingStep === 2 ? "active" : ""}`}>
+                <div className="loading-step-dot" />
+                Generating panel images
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Story title */}
+        {storyTitle && storyTitle !== "Generating..." && (
+          <div style={{
+            padding: "16px 20px 4px",
+            fontFamily: "var(--font-display)",
+            fontSize: "18px",
+            color: "var(--text)",
+            lineHeight: 1.2,
+            textAlign: "center",
+          }}>
+            {storyTitle}
+          </div>
+        )}
+
         {/* Character Reference Sheet */}
         {characterImage && (
           <div style={{
@@ -387,6 +488,10 @@ export default function WebtoonViewer({
           <div className="lightbox-inner" onClick={(e) => e.stopPropagation()}>
             {/* Close */}
             <button className="lightbox-close" onClick={() => setZoomedPanel(null)}>✕</button>
+            {/* Fullscreen */}
+            <button className="lightbox-fullscreen" onClick={toggleFullscreen} title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}>
+              {isFullscreen ? "⊡" : "⛶"}
+            </button>
 
             {/* Panel info */}
             <div className="lightbox-meta">
