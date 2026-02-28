@@ -40,7 +40,7 @@ export const STYLES: Style[] = [
 
 const STORY_SUGGESTIONS = [
   // K-Webtoon: modern Seoul romance + tech
-  "I'm a broke developer who wins the Gemini hackathon in Seoul. Google flies me business class to Mountain View. I give a keynote at Google I/O. Backstage, I bump into a famous K-pop idol — turns out she's super into AI. We exchange numbers and start dating. My mom finally stops asking when I'll get a real job.",
+  "I'm a broke developer who wins the Gemini hackathon in Seoul. Google flies me business class to Mountain View. I give a keynote at Google I/O. Backstage, I bump into a famous K-pop idol — turns out she's super into AI. We exchange numbers. We start dating.",
   // Anime: isekai fantasy adventure
   "I fall asleep at my desk after a 48-hour coding sprint and wake up in a fantasy world where programming is magic. My Python skills make me the most powerful sorcerer in the kingdom. I assemble a party of warriors, storm the demon king's castle, and defeat him with a perfectly optimized algorithm.",
   // Comic: superhero action
