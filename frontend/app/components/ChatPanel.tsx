@@ -102,22 +102,23 @@ function StoryboardCard({
   return (
     <div
       style={{
-        background: "var(--elevated)",
-        border: "1px solid var(--border)",
-        borderRadius: 12,
+        background: "#fff",
+        border: "1px solid rgba(17,17,17,0.06)",
+        borderRadius: 14,
         padding: "16px 18px",
-        marginLeft: 42,
+        marginLeft: 38,
         maxWidth: "90%",
         display: "flex",
         flexDirection: "column",
-        gap: 13,
+        gap: 12,
+        boxShadow: "0 2px 8px rgba(17,17,17,0.05)",
       }}
     >
       {/* Title */}
       <div
         style={{
           fontFamily: "var(--font-display)",
-          fontSize: "17px",
+          fontSize: "16px",
           color: "var(--text)",
           lineHeight: 1.2,
         }}
@@ -126,23 +127,23 @@ function StoryboardCard({
       </div>
 
       {/* Characters */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
         {data.characters.map((c) => (
           <span
             key={c.name}
             style={{
               fontFamily: "var(--font-mono)",
-              fontSize: "11px",
-              padding: "3px 10px",
+              fontSize: "10px",
+              padding: "4px 10px",
               borderRadius: 20,
-              background: "rgba(17,17,17,0.05)",
-              border: "1px solid var(--border)",
+              background: "rgba(17,17,17,0.03)",
+              border: "1px solid rgba(17,17,17,0.06)",
               color: "var(--dim)",
-              letterSpacing: "0.04em",
+              letterSpacing: "0.03em",
             }}
           >
             {c.name}
-            <span style={{ opacity: 0.45, marginLeft: 4 }}>· {c.role}</span>
+            <span style={{ opacity: 0.4, marginLeft: 4 }}>· {c.role}</span>
           </span>
         ))}
       </div>
@@ -152,9 +153,9 @@ function StoryboardCard({
         <div
           style={{
             display: "flex",
-            borderRadius: 5,
+            borderRadius: 6,
             overflow: "hidden",
-            height: 22,
+            height: 20,
             gap: 2,
           }}
         >
@@ -233,12 +234,12 @@ function StoryboardCard({
       {activeAct && (
         <div
           style={{
-            borderTop: "1px solid var(--border)",
+            borderTop: "1px solid rgba(17,17,17,0.05)",
             paddingTop: 10,
             display: "flex",
             flexDirection: "column",
-            gap: 7,
-            maxHeight: 180,
+            gap: 6,
+            maxHeight: 160,
             overflowY: "auto",
           }}
         >
@@ -262,7 +263,7 @@ function StoryboardCard({
                 <span
                   style={{
                     fontFamily: "var(--font-body)",
-                    fontSize: "14px",
+                    fontSize: "13px",
                     color: p.dialogue ? "var(--text)" : "var(--dimmer)",
                     fontStyle: p.dialogue ? "normal" : "italic",
                     lineHeight: 1.4,
@@ -704,9 +705,8 @@ export default function ChatPanel({
           className={`btn-send ${input.trim() ? "btn-send-active" : "btn-send-disabled"}`}
           onClick={handleEditSend}
           disabled={!input.trim()}
-        >
-          Send
-        </button>
+          aria-label="Send"
+        />
       </div>
     </div>
   );

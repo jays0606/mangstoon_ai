@@ -39,10 +39,14 @@ export const STYLES: Style[] = [
 ];
 
 const STORY_SUGGESTIONS = [
-  "I'm a broke developer who wins the Gemini hackathon in Seoul. Google flies me business class to Mountain View. I give a keynote at Google I/O. Backstage, I bump into Jisoo from BLACKPINK \u2014 turns out she's super into AI. We exchange numbers. We start dating.",
-  "I'm a regular office worker in Gangnam. One day I find a mysterious USB drive that gives me the power to control any AI model. Tech giants start bidding for my abilities. Elon offers me Twitter, but I choose to build my own startup instead. It becomes the biggest company in Korea.",
-  "I upload a random K-pop dance cover on YouTube. It goes viral overnight \u2014 50 million views. HYBE calls me in for an audition. I debut in a new group, perform at Coachella, and win a Grammy. My parents finally think I made a good life choice.",
-  "I accidentally get isekai'd into a fantasy world where coding is magic. My Python skills make me the most powerful sorcerer. I defeat the demon king with a well-optimized algorithm, save the kingdom, and become the legendary hero they write songs about.",
+  // K-Webtoon: modern Seoul romance + tech
+  "I'm a broke developer who wins the Gemini hackathon in Seoul. Google flies me business class to Mountain View. I give a keynote at Google I/O. Backstage, I bump into a famous K-pop idol — turns out she's super into AI. We exchange numbers and start dating. My mom finally stops asking when I'll get a real job.",
+  // Anime: isekai fantasy adventure
+  "I fall asleep at my desk after a 48-hour coding sprint and wake up in a fantasy world where programming is magic. My Python skills make me the most powerful sorcerer in the kingdom. I assemble a party of warriors, storm the demon king's castle, and defeat him with a perfectly optimized algorithm.",
+  // Comic: superhero action
+  "I'm a broke college student in New York who gets bitten by a radioactive USB stick. I gain the power to hack any system with my mind. The FBI recruits me, I stop a global cyberattack, save the president, and get a medal at the White House. Marvel calls — they want my life rights.",
+  // Cinematic: dark thriller noir
+  "I'm a night-shift taxi driver in Gangnam who accidentally picks up a mysterious passenger carrying a briefcase worth billions. The Korean mafia is after us. A high-speed chase through neon-lit Seoul streets. I outrun them all, deliver the briefcase, and disappear into the night as a legend.",
 ];
 
 export default function Home() {
