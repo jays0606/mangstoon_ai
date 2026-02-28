@@ -4,6 +4,12 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "MangstoonAI — 당신의 망상을 웹툰으로",
   description: "AI가 당신의 망상을 한국 웹툰으로 만들어드립니다",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
+    ],
+  },
 };
 
 export default function RootLayout({
