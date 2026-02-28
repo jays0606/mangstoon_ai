@@ -1,18 +1,773 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0f0f0f;
-  --foreground: #f0f0f0;
+  --bg: #12121a;
+  --bg-card: #1c1c28;
+  --bg-elevated: #26263a;
+  --bg-input: #18182a;
+  --pink: #f72585;
+  --purple: #7209b7;
+  --green: #4ade80;
+  --white: #f0f0f4;
+  --dim: rgba(255, 255, 255, 0.55);
+  --dimmer: rgba(255, 255, 255, 0.3);
+  --border-color: rgba(255, 255, 255, 0.12);
+  --font-mono: "JetBrains Mono", monospace;
+  --font-body: "Zen Kaku Gothic New", sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+* {
+  box-sizing: border-box;
 }
 
-/* Webtoon scroll */
-.webtoon-panel img {
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--white);
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+
+/* ── Layout ── */
+
+.split-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 460px 1fr;
+  min-height: 0;
+}
+
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color);
+  background: var(--bg);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.preview-panel {
+  overflow-y: auto;
+  min-height: 0;
+  background: var(--bg);
+}
+
+@media (max-width: 768px) {
+  .split-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+  .chat-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+}
+
+/* ── Top Bar ── */
+
+.topbar {
+  flex-shrink: 0;
+  height: 44px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topbar-logo {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: -0.02em;
+}
+
+.topbar-logo span {
+  color: var(--pink);
+}
+
+.topbar-model {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+  margin-left: 12px;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+}
+
+.badge-style {
+  background: rgba(247, 37, 133, 0.15);
+  color: var(--pink);
+  border: 1px solid rgba(247, 37, 133, 0.3);
+}
+
+.badge-progress {
+  background: rgba(74, 222, 128, 0.1);
+  color: var(--green);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+}
+
+.btn-reset {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+  background: none;
+  border: 1px solid var(--border-color);
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.15s;
+}
+
+.btn-reset:hover {
+  color: var(--pink);
+  border-color: rgba(247, 37, 133, 0.4);
+}
+
+/* ── Phase Bar ── */
+
+.phase-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.phase-step {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+
+.phase-step.done {
+  color: var(--green);
+  background: rgba(74, 222, 128, 0.08);
+}
+
+.phase-step.active {
+  color: var(--pink);
+  background: rgba(247, 37, 133, 0.12);
+}
+
+.phase-step.future {
+  color: rgba(255, 255, 255, 0.15);
+}
+
+.phase-arrow {
+  color: rgba(255, 255, 255, 0.1);
+  font-size: 10px;
+  margin: 0 4px;
+}
+
+/* ── Chat Messages ── */
+
+.chat-messages {
+  flex: 1;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.msg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.msg-user {
+  align-items: flex-end;
+}
+
+.msg-ai {
+  align-items: flex-start;
+}
+
+.msg-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  margin: 0 4px 1px;
+}
+
+.msg-label-sys { color: rgba(255,255,255,0.2); }
+.msg-label-director { color: var(--purple); }
+
+.msg-bubble {
+  max-width: 90%;
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  border-radius: 10px;
+}
+
+.msg-bubble-user {
+  background: var(--pink);
+  color: #fff;
+  border-radius: 10px 10px 3px 10px;
+}
+
+.msg-bubble-ai {
+  background: var(--bg-elevated);
+  color: var(--white);
+  border: 1px solid var(--border-color);
+  border-left: 2px solid var(--purple);
+  border-radius: 10px 10px 10px 3px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.msg-bubble-sys {
+  background: transparent;
+  color: rgba(255,255,255,0.25);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 0;
+}
+
+.msg-time {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.12);
+  margin: 0 4px;
+}
+
+/* ── Style Cards ── */
+
+.style-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.style-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 14px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.style-card:hover {
+  border-color: rgba(247, 37, 133, 0.4);
+  background: rgba(247, 37, 133, 0.05);
+}
+
+.style-card.selected {
+  border-color: var(--pink);
+  background: rgba(247, 37, 133, 0.1);
+  box-shadow: 0 0 12px rgba(247, 37, 133, 0.15);
+}
+
+.style-card-emoji {
+  font-size: 28px;
+  margin-bottom: 6px;
+}
+
+.style-card-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--white);
+  letter-spacing: 0.04em;
+}
+
+.style-card-desc {
+  font-size: 10px;
+  color: var(--dim);
+  margin-top: 2px;
+}
+
+/* ── Chat Input ── */
+
+.chat-input-bar {
+  border-top: 1px solid var(--border-color);
+  padding: 10px 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+.chat-input-bar.disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.chat-input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.chat-input:focus {
+  border-color: rgba(247, 37, 133, 0.4);
+  outline: none;
+}
+
+.chat-input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-send {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 9px 14px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.btn-send-active {
+  background: var(--pink);
+  color: #fff;
+}
+
+.btn-send-disabled {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.2);
+  cursor: not-allowed;
+}
+
+/* ── Selected Panel Badge ── */
+
+.selected-panel-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: rgba(247, 37, 133, 0.15);
+  color: var(--pink);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid rgba(247, 37, 133, 0.3);
+}
+
+/* ── CTA Button ── */
+
+.btn-cta {
   width: 100%;
-  display: block;
+  padding: 14px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cta-pink {
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  color: #fff;
+}
+
+.btn-cta-pink:hover {
+  box-shadow: 0 4px 20px rgba(247, 37, 133, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-cta-pink:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── Edit Examples ── */
+
+.edit-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.edit-chip {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(114, 9, 183, 0.1);
+  border: 1px solid rgba(114, 9, 183, 0.25);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.edit-chip:hover {
+  background: rgba(114, 9, 183, 0.2);
+  color: var(--white);
+  border-color: var(--purple);
+}
+
+/* ── Panel Grid (right side) ── */
+
+.panel-grid-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-grid-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+}
+
+.panel-grid-subtitle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.chapter-divider {
+  grid-column: 1 / -1;
+  padding: 8px 0 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+  border-top: 1px solid var(--border-color);
+  margin-top: 4px;
+}
+
+.chapter-divider:first-child {
+  border-top: none;
+  margin-top: 0;
+}
+
+/* ── Panel Card ── */
+
+.panel-card {
+  aspect-ratio: 9 / 16;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.panel-card:hover {
+  transform: scale(1.02);
+}
+
+.panel-card.selected {
+  outline: 2px solid var(--pink);
+  outline-offset: 2px;
+  box-shadow: 0 0 16px rgba(247, 37, 133, 0.25);
+}
+
+.panel-card-done {
+  background: var(--bg-card);
+}
+
+.panel-card-gen {
+  background: var(--bg-card);
+  animation: shimmer 1.5s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(247, 37, 133, 0.12);
+}
+
+.panel-card-wait {
+  opacity: 0.18;
+  background: var(--bg-card);
+}
+
+/* Panel number badge */
+.panel-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.6);
+  color: rgba(255, 255, 255, 0.5);
+  z-index: 5;
+}
+
+/* Panel narration */
+.panel-narration {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  right: 28px;
+  font-family: var(--font-body);
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.45);
+  line-height: 1.3;
+  z-index: 5;
+}
+
+/* Panel dialogue */
+.panel-dialogue {
+  position: absolute;
+  bottom: 6px;
+  left: 5px;
+  right: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  z-index: 5;
+}
+
+.speech-bubble {
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+  border-radius: 8px;
+  max-width: 85%;
+  line-height: 1.3;
+}
+
+.speech-bubble:nth-child(even) {
+  align-self: flex-end;
+}
+
+/* Panel generating state */
+.panel-gen-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+}
+
+.panel-gen-icon {
+  font-size: 24px;
+  animation: pulse-glow 1.2s ease-in-out infinite;
+}
+
+.panel-gen-text {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--pink);
+  letter-spacing: 0.08em;
+}
+
+/* ── Generation Progress Bar ── */
+
+.gen-progress-bar {
+  position: sticky;
+  bottom: 0;
+  padding: 10px 20px;
+  background: var(--bg);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gen-progress-track {
+  flex: 1;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.gen-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--pink), var(--purple));
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.gen-progress-text {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+/* ── Empty State ── */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.1);
+}
+
+.empty-state-icon {
+  font-size: 56px;
+  opacity: 0.4;
+}
+
+.empty-state-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.15);
+}
+
+/* ── Selfie Upload ── */
+
+.selfie-upload {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+}
+
+.selfie-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  background: var(--bg-card);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  padding: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+
+.selfie-btn:hover {
+  border-color: var(--pink);
+}
+
+.selfie-btn.has-image {
+  border: 2px solid var(--pink);
+  border-style: solid;
+}
+
+/* ── Story Textarea ── */
+
+.story-textarea {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-left: 2px solid var(--purple);
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 12px;
+  border-radius: 4px;
+  resize: none;
+  min-height: 80px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.story-textarea:focus {
+  border-color: rgba(114, 9, 183, 0.5);
+  outline: none;
+}
+
+.story-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Animations ── */
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; box-shadow: 0 0 24px rgba(247, 37, 133, 0.2); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+/* ── Scrollbar ── */
+
+::-webkit-scrollbar {
+  width: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ── Focus ── */
+
+textarea:focus,
+input:focus {
+  outline: none;
 }

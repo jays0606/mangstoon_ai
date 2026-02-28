@@ -1,0 +1,14 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.134.0",
+    "google-adk>=1.26.0",
+    "google-genai>=1.65.0",
+    "pillow>=12.1.1",
+    "python-dotenv>=1.2.1",
+    "python-multipart>=0.0.22",
+    "uvicorn[standard]>=0.41.0",
+]

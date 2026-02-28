@@ -1,0 +1,7 @@
+google-adk
+google-genai
+fastapi
+uvicorn[standard]
+pillow
+python-multipart
+python-dotenv
