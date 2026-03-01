@@ -29,7 +29,7 @@ jobs:
           gcloud run deploy mangstoon-backend \
             --source backend/ \
             --region asia-northeast3 \
-            --project civil-oarlock-456708-k2 \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
             --allow-unauthenticated \
             --memory 2Gi \
             --cpu 2 \
@@ -37,5 +37,5 @@ jobs:
             --concurrency 10 \
             --max-instances 3 \
             --set-secrets="GOOGLE_API_KEY=GOOGLE_API_KEY:latest" \
-            --service-account="mangstoon-deployer@civil-oarlock-456708-k2.iam.gserviceaccount.com" \
-            --build-service-account="projects/civil-oarlock-456708-k2/serviceAccounts/mangstoon-deployer@civil-oarlock-456708-k2.iam.gserviceaccount.com"
+            --service-account=${{ secrets.CLOUD_RUN_SERVICE_ACCOUNT }} \
+            --build-service-account="projects/${{ secrets.GCP_PROJECT_ID }}/serviceAccounts/${{ secrets.CLOUD_RUN_SERVICE_ACCOUNT }}"

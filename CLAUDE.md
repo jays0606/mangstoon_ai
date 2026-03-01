@@ -1,6 +1,6 @@
 # MangstoonAI — CLAUDE.md
 
-AI 망상툰 generator. Gemini 3 Seoul Hackathon, Feb 28 2026.
+AI 망상툰 generator. **3rd Place — Gemini 3 Seoul Hackathon, Feb 28 2026 — $20,000 Credits**
 
 ---
 
@@ -220,9 +220,9 @@ Panel type carries full storyboard context: `scene_description`, `character_info
 
 ### Backend — Cloud Run (asia-northeast3 / Seoul)
 ```
-URL: https://mangstoon-backend-qlxchgmpvq-du.a.run.app
+URL: <your-cloud-run-url>
 Region: asia-northeast3
-SA: mangstoon-deployer@civil-oarlock-456708-k2.iam.gserviceaccount.com
+SA: <your-service-account>@<your-project-id>.iam.gserviceaccount.com
 Config: 2 CPU, 2Gi RAM, 300s timeout, max 3 instances
 Secret: GOOGLE_API_KEY via Secret Manager
 ```
@@ -231,7 +231,7 @@ Secret: GOOGLE_API_KEY via Secret Manager
 Push to `main` (changes in `backend/`) triggers `.github/workflows/deploy-backend.yml`:
 - Auth via Workload Identity Federation (no key files)
 - `gcloud run deploy --source backend/`
-- GitHub secrets: `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`
+- GitHub secrets: `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`, `GCP_PROJECT_ID`, `CLOUD_RUN_SERVICE_ACCOUNT`
 
 ### Image Storage — GCS
 ```

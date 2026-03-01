@@ -4,8 +4,8 @@
 
 | What | URL |
 |------|-----|
-| **Live App** | https://mangstoon-ai.vercel.app/ |
-| **Backend (Cloud Run)** | https://mangstoon-backend-qlxchgmpvq-du.a.run.app |
+| **Live App** | *(removed for now)* |
+| **Backend (Cloud Run)** | `<your-cloud-run-url>` |
 | **GitHub Repo** | https://github.com/jays0606/mangstoon_ai |
 | **Submit** | https://cerebralvalley.ai/e/gemini-3-seoul-hackathon/hackathon/submit |
 | **Pitch Deck** | `pitch-deck/MangstoonAI-Pitch.pptx` |
@@ -45,7 +45,7 @@ Entertainment Track — democratizing webtoon creation for the $10B+ webtoon mar
 
 | Time | Task | Status |
 |------|------|--------|
-| 2:15 - 2:30 | Dry run — full flow on mangstoon-ai.vercel.app | ⬜ |
+| 2:15 - 2:30 | Dry run — full flow in production (removed for now) | ⬜ |
 | 2:30 - 2:45 | Screen record with QuickTime (record the dry run) | ⬜ |
 | 2:45 - 3:15 | CapCut — trim to 1 min, add text overlays, export | ⬜ |
 | 3:15 - 3:30 | Upload video to YouTube (unlisted) | ⬜ |
